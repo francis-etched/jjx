@@ -6,6 +6,7 @@ import {
   rebaseMenu,
   tooltip,
   dragBookmarkName,
+  dragFile,
   postMessage,
   closeAllMenus,
   selectedNodes,
@@ -37,6 +38,7 @@ export function useDragDrop(change: ChangeNode) {
             return;
           }
           dragBookmarkName.value = null;
+          dragFile.value = null;
           dragStartChangeId.value = change.id.changeId;
           isDragging.value = true;
           clearAllTimers();
@@ -90,6 +92,7 @@ export function useDragDrop(change: ChangeNode) {
           isDragging.value = false;
           dragStartChangeId.value = null;
           dragBookmarkName.value = null;
+          dragFile.value = null;
           dropTargetId.value = null;
         },
     onDragOver: (e: DragEvent) => {
@@ -101,10 +104,13 @@ export function useDragDrop(change: ChangeNode) {
       if (!isDragging.value) {
         return;
       }
-      if (!dragBookmarkName.value && !dragStartChangeId.value) {
+      if (!dragBookmarkName.value && !dragStartChangeId.value && !dragFile.value) {
         return;
       }
       if (dragStartChangeId.value && change.id.changeId === dragStartChangeId.value) {
+        return;
+      }
+      if (dragFile.value && change.id.changeId === dragFile.value.changeId) {
         return;
       }
       dropTargetId.value = change.id.changeId;
@@ -136,6 +142,29 @@ export function useDragDrop(change: ChangeNode) {
           bookmark: bookmarkName,
           targetChangeId: change.id.changeId,
         });
+        return;
+      }
+
+      if (dragFile.value) {
+        clearAllTimers();
+        tooltip.value = null;
+        const file = dragFile.value;
+        isDragging.value = false;
+        dragFile.value = null;
+        dropTargetId.value = null;
+        justFinishedDrag.value = true;
+        setTimeout(() => {
+          justFinishedDrag.value = false;
+        }, 100);
+        if (change.id.changeId !== file.changeId) {
+          postMessage({
+            command: "squashFile",
+            changeId: file.changeId,
+            targetChangeId: change.id.changeId,
+            path: file.path,
+            ...(file.renamedFrom ? { renamedFrom: file.renamedFrom } : {}),
+          });
+        }
         return;
       }
 

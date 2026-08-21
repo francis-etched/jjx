@@ -20,6 +20,7 @@ import {
   showTooltips,
   showChangedFiles,
   dragBookmarkName,
+  dragFile,
   pillContextMenu,
   currentWorkspace,
   remoteRefContextMenu,
@@ -550,8 +551,12 @@ const ChangedFileList = memo(function ChangedFileList({ change }: { change: Regu
           data-path={f.path}
           data-status={f.type.toLowerCase()}
           data-conflict={f.conflict ? "" : undefined}
+          draggable
           onClick={(e) => {
             e.stopPropagation();
+            if (isDragging.value || justFinishedDrag.value) {
+              return;
+            }
             postMessage({
               command: "openFileDiff",
               changeId: change.id.changeId,
@@ -570,6 +575,39 @@ const ChangedFileList = memo(function ChangedFileList({ change }: { change: Regu
               clientX: e.clientX,
               clientY: e.clientY,
             };
+          }}
+          onDragStart={(e) => {
+            e.stopPropagation();
+            dragFile.value = {
+              changeId: change.id.changeId,
+              path: f.path,
+              ...(f.renamedFrom ? { renamedFrom: f.renamedFrom } : {}),
+            };
+            isDragging.value = true;
+            clearAllTooltipTimers();
+            tooltip.value = null;
+            e.dataTransfer!.setData("text/plain", f.path);
+            e.dataTransfer!.effectAllowed = "move";
+
+            const ghost = document.createElement("div");
+            ghost.className = dragGhostStyles.dragGhost;
+            const status = document.createElement("span");
+            status.className = styles.changedFileStatus;
+            status.textContent = f.type;
+            ghost.appendChild(status);
+            const filePath = document.createElement("span");
+            filePath.className = styles.changedFilePath;
+            filePath.textContent = f.path;
+            ghost.appendChild(filePath);
+            document.body.appendChild(ghost);
+            e.dataTransfer!.setDragImage(ghost, -15, 0);
+            setTimeout(() => ghost.remove(), 0);
+          }}
+          onDragEnd={(e) => {
+            e.stopPropagation();
+            isDragging.value = false;
+            dragFile.value = null;
+            dropTargetId.value = null;
           }}
         >
           <span class={styles.changedFileStatus}>

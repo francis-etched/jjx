@@ -581,6 +581,22 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
             repo.squashRetryImmutable({ fromRevs: message.changeIds, toRev: message.targetChangeId }),
           );
           break;
+        case "squashFile": {
+          // For renames both the pre- and post-rename paths must be in the fileset so the
+          // deletion of the old path moves along with the addition of the new one.
+          const filepaths = [joinRepositoryPath(repo.repositoryRoot, message.path)];
+          if (message.renamedFrom) {
+            filepaths.push(joinRepositoryPath(repo.repositoryRoot, message.renamedFrom));
+          }
+          await this.withRefresh("squash file", () =>
+            repo.squashRetryImmutable({
+              fromRevs: [message.changeId],
+              toRev: message.targetChangeId,
+              filepaths,
+            }),
+          );
+          break;
+        }
         case "duplicateOnto":
         case "duplicateAfter":
         case "duplicateBefore": {

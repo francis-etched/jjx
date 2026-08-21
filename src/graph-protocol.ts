@@ -145,6 +145,13 @@ export type WebviewToExtensionMessage =
   | { command: "rebaseAddParent"; changeId: FullChangeId; targetChangeId: FullChangeId }
   | { command: "rebaseRemoveParent"; changeId: FullChangeId; targetChangeId: FullChangeId }
   | { command: "squashInto"; changeIds: FullChangeId[]; targetChangeId: FullChangeId }
+  | {
+      command: "squashFile";
+      changeId: FullChangeId;
+      targetChangeId: FullChangeId;
+      path: string;
+      renamedFrom?: string;
+    }
   | { command: "duplicateOnto"; changeIds: FullChangeId[]; targetChangeId: FullChangeId }
   | { command: "duplicateAfter"; changeIds: FullChangeId[]; targetChangeId: FullChangeId }
   | { command: "duplicateBefore"; changeIds: FullChangeId[]; targetChangeId: FullChangeId }

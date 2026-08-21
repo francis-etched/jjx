@@ -1,5 +1,12 @@
 # Change Log
 
+## Unreleased
+
+### New Features
+
+- **Drag a file onto another commit to move it** - With `jjx.showChangedFiles` enabled, dragging a changed file from one
+  commit onto another squashes just that file's changes into the target (`jj squash --from ... --into ... <file>`)
+
 ## 1.16.1
 
 ### Bug Fixes

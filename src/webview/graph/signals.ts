@@ -29,6 +29,7 @@ export const selectionAnchorId = signal<FullChangeId | null>(null);
 export const isDragging = signal(false);
 export const dragStartChangeId = signal<string | null>(null);
 export const dragBookmarkName = signal<string | null>(null);
+export const dragFile = signal<DragFileState | null>(null);
 export const dropTargetId = signal<string | null>(null);
 export const hoveredChangeId = signal<string | null>(null);
 export const justFinishedDrag = signal(false);
@@ -49,6 +50,15 @@ export const offsetWidth = signal(0);
 export const tooltipTimeout = signal<ReturnType<typeof setTimeout> | null>(null);
 export const tooltipHideTimeout = signal<ReturnType<typeof setTimeout> | null>(null);
 export const diffStatsPrefetchTimeout = signal<ReturnType<typeof setTimeout> | null>(null);
+
+interface DragFileState {
+  /** The change the file's diff currently lives in. */
+  changeId: FullChangeId;
+  /** Repository-relative path with forward slashes. */
+  path: string;
+  /** Pre-rename path when the file was renamed in the change. */
+  renamedFrom?: string;
+}
 
 interface ContextMenuState {
   change: RegularChangeNode;
