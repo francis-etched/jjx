@@ -12,7 +12,7 @@ src/webview/graph/.generated/
 .jj
 .jj-workspaces
 test-results/
-tests-integration/.vscode-path
+tests-integration/.vscode-path*
 .pnpm-store/
 .tmp/
 package-lock.json

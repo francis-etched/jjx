@@ -2,7 +2,9 @@ import { downloadAndUnzipVSCode } from "@vscode/test-electron/out/download";
 import fs from "fs";
 import path from "path";
 
-const vscodePathFile = path.join(__dirname, ".vscode-path");
+// Platform-specific so native and containerized (headless) runs sharing this
+// checkout don't overwrite each other's cached VS Code binary path.
+const vscodePathFile = path.join(__dirname, `.vscode-path-${process.platform}-${process.arch}`);
 const MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
 
 function isVscodePathValid(): boolean {

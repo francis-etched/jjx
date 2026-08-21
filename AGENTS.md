@@ -30,6 +30,18 @@ pnpm exec playwright test --config=tests-integration/playwright.config.ts tests-
 
 Do not add custom timeouts to Playwright expectations. The Playwright config already sets `expect.timeout`.
 
+#### Headless runs
+
+VS Code has no headless mode on macOS/Windows, but on Linux the harness auto-starts per-worker Xvfb displays. To run the
+suite headlessly on a non-Linux host (requires Docker):
+
+```shell
+pnpm run playwright-test:headless [playwright args...]
+```
+
+This builds `tests-integration/headless/Dockerfile` and runs the tests in the container against a bind mount of the
+repository; reports land in the working tree as usual.
+
 ### Debugging CI Failures
 
 When a CI Playwright run fails and the downloaded HTML report (`index.html`) is available locally, extract the full test
