@@ -5,7 +5,7 @@ import type { ExtensionState } from "./extension-state";
 import { relativeTime } from "./relative-time";
 import { formatChangeIdShort } from "./utils";
 import { toWorkspaceUri } from "./workspace-paths";
-import { BLAME_HOVER_COMMANDS, buildBlameHoverMarkdown } from "./blame-hover";
+import { BLAME_HOVER_COMMANDS, buildBlameHoverActions, buildBlameHoverBody } from "./blame-hover";
 
 export function registerAnnotations(state: ExtensionState): void {
   const context = state.context;
@@ -66,12 +66,15 @@ export function registerAnnotations(state: ExtensionState): void {
           }
           const desc = change.description ? change.description.split("\n")[0] : "(no description)";
           const contextText = `${change.author.name}, ${relativeTime(change.authoredDate)} • ${formatChangeIdShort(change.changeId)} • ${desc}`;
-          const hoverMessage = new vscode.MarkdownString(
-            buildBlameHoverMarkdown(change, editor.document.uri.toString()),
+          // The body renders the commit description as markdown, so it must
+          // stay non-trusted; only the actions section may execute commands.
+          const hoverBody = new vscode.MarkdownString(buildBlameHoverBody(change));
+          const hoverActions = new vscode.MarkdownString(
+            buildBlameHoverActions(change, editor.document.uri.toString()),
           );
-          hoverMessage.isTrusted = { enabledCommands: BLAME_HOVER_COMMANDS };
+          hoverActions.isTrusted = { enabledCommands: BLAME_HOVER_COMMANDS };
           decorations.push({
-            hoverMessage,
+            hoverMessage: [hoverBody, hoverActions],
             renderOptions: {
               after: {
                 backgroundColor: "#00000000",

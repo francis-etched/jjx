@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
 import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { buildBlameHoverMarkdown, escapeMarkdown, BLAME_HOVER_COMMANDS } from "../blame-hover";
+import { buildBlameHoverBody, buildBlameHoverActions, escapeMarkdown, BLAME_HOVER_COMMANDS } from "../blame-hover";
 import type { ChangeWithDetails } from "../types";
 import { fullChangeIdFromString } from "../utils";
 
@@ -48,58 +48,63 @@ describe("escapeMarkdown", () => {
   });
 });
 
-describe("buildBlameHoverMarkdown", () => {
+describe("buildBlameHoverBody", () => {
   it("shows author, relative time, and description", () => {
-    const markdown = buildBlameHoverMarkdown(makeChange(), DOCUMENT_URI);
-    assert.match(markdown, /\*\*Test Author\*\* \(author@example\\\.com\), 3 days ago \(/);
-    assert.ok(markdown.includes("Fix null pointer in payment processor"));
+    const body = buildBlameHoverBody(makeChange());
+    assert.match(body, /\*\*Test Author\*\* \(author@example\\\.com\), 3 days ago \(/);
+    assert.ok(body.includes("Fix null pointer in payment processor"));
   });
 
-  it("shows the short change ID and short commit ID", () => {
-    const markdown = buildBlameHoverMarkdown(makeChange(), DOCUMENT_URI);
-    assert.ok(markdown.includes("`qpvuntsm`"));
-    assert.ok(markdown.includes("`1a2b3c4d`"));
+  it("escapes markdown in the author name", () => {
+    const body = buildBlameHoverBody(makeChange({ author: { name: "*Evil*", email: "e@example.com" } }));
+    assert.ok(body.includes("**\\*Evil\\***"));
+  });
+
+  it("keeps the description as verbatim markdown", () => {
+    const description = "Refactor activate() into:\n\n- extensionState.ts: shared state\n- commands.ts: registrations";
+    const body = buildBlameHoverBody(makeChange({ description }));
+    assert.ok(body.includes(description));
+  });
+
+  it("does not build command links itself (it must be rendered untrusted)", () => {
+    const body = buildBlameHoverBody(makeChange());
+    assert.ok(!body.includes("command:"));
   });
 
   it("falls back to (no description)", () => {
-    const markdown = buildBlameHoverMarkdown(makeChange({ description: "" }), DOCUMENT_URI);
-    assert.ok(markdown.includes("(no description)"));
+    const body = buildBlameHoverBody(makeChange({ description: "" }));
+    assert.ok(body.includes("*(no description)*"));
+  });
+});
+
+describe("buildBlameHoverActions", () => {
+  it("shows the short change ID and short commit ID", () => {
+    const actions = buildBlameHoverActions(makeChange(), DOCUMENT_URI);
+    assert.ok(actions.includes("`qpvuntsm`"));
+    assert.ok(actions.includes("`1a2b3c4d`"));
   });
 
   it("links every enabled command with JSON-encoded arguments", () => {
-    const markdown = buildBlameHoverMarkdown(makeChange(), DOCUMENT_URI);
+    const actions = buildBlameHoverActions(makeChange(), DOCUMENT_URI);
     for (const command of BLAME_HOVER_COMMANDS) {
-      assert.ok(markdown.includes(`](command:${command}?`), `missing link for ${command}`);
+      assert.ok(actions.includes(`](command:${command}?`), `missing link for ${command}`);
     }
     const showDiffArgs = encodeURIComponent(JSON.stringify([DOCUMENT_URI, "qpvuntsmwlqtpsluzzzzzzzzzzzzzzzz"]));
-    assert.ok(markdown.includes(`command:jj.blameShowDiff?${showDiffArgs}`));
+    assert.ok(actions.includes(`command:jj.blameShowDiff?${showDiffArgs}`));
     const copyCommitArgs = encodeURIComponent(JSON.stringify(["1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b"]));
-    assert.ok(markdown.includes(`command:jj.blameCopyText?${copyCommitArgs}`));
-  });
-
-  it("does not let commit descriptions inject command links", () => {
-    const markdown = buildBlameHoverMarkdown(
-      makeChange({ description: "[click me](command:workbench.action.terminal.new)" }),
-      DOCUMENT_URI,
-    );
-    assert.ok(!markdown.includes("](command:workbench"));
-  });
-
-  it("keeps multi-line descriptions as hard line breaks", () => {
-    const markdown = buildBlameHoverMarkdown(makeChange({ description: "First line\n\nBody line" }), DOCUMENT_URI);
-    assert.ok(markdown.includes("First line  \n  \nBody line"));
+    assert.ok(actions.includes(`command:jj.blameCopyText?${copyCommitArgs}`));
   });
 
   it("shows divergent, conflict, and empty badges", () => {
-    const markdown = buildBlameHoverMarkdown(
+    const actions = buildBlameHoverActions(
       makeChange({ divergent: true, isConflict: true, isEmpty: true }),
       DOCUMENT_URI,
     );
-    assert.ok(markdown.includes("*(divergent, conflict, empty)*"));
+    assert.ok(actions.includes("*(divergent, conflict, empty)*"));
   });
 
   it("appends the divergence offset to the displayed change ID", () => {
-    const markdown = buildBlameHoverMarkdown(
+    const actions = buildBlameHoverActions(
       makeChange({
         changeId: {
           changeId: fullChangeIdFromString("qpvuntsmwlqtpsluzzzzzzzzzzzzzzzz/2"),
@@ -110,6 +115,6 @@ describe("buildBlameHoverMarkdown", () => {
       }),
       DOCUMENT_URI,
     );
-    assert.ok(markdown.includes("`qpvuntsm/2`"));
+    assert.ok(actions.includes("`qpvuntsm/2`"));
   });
 });

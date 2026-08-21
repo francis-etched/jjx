@@ -3,7 +3,7 @@ import { formatChangeIdShort } from "./utils";
 import { relativeTime } from "./relative-time";
 
 /**
- * The only commands the blame hover's MarkdownString may execute.
+ * The only commands the blame hover's trusted MarkdownString may execute.
  * Pass this as `isTrusted: { enabledCommands: BLAME_HOVER_COMMANDS }`.
  */
 export const BLAME_HOVER_COMMANDS = [
@@ -15,11 +15,7 @@ export const BLAME_HOVER_COMMANDS = [
 
 const absoluteTimeFormatter = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" });
 
-/**
- * Escapes commit-controlled text so it renders literally: without this, a commit
- * description containing e.g. `[x](command:...)` would become a clickable link
- * in the trusted hover markdown.
- */
+/** Escapes text that should render literally rather than as markdown. */
 export function escapeMarkdown(text: string): string {
   return text.replace(/[\\`*_{}[\]()<>#+\-.!|~]/g, "\\$&").replaceAll("\n", "  \n");
 }
@@ -29,21 +25,29 @@ function commandLink(label: string, command: string, args: unknown[], tooltip: s
 }
 
 /**
- * Builds the markdown shown when hovering the inline blame annotation.
- * Pure function (no vscode imports) so it stays unit-testable; the caller wraps
- * the result in a MarkdownString with the commands above enabled.
+ * The author/date header plus the commit description. The description is
+ * rendered as markdown (lists, links, emphasis), so the caller MUST wrap this
+ * in a NON-trusted MarkdownString: in a trusted one, a description containing
+ * `[label](command:...)` would become a clickable command link.
  */
-export function buildBlameHoverMarkdown(change: ChangeWithDetails, documentUri: string): string {
-  const changeIdFull = change.changeId.changeId;
-  const changeIdShort = formatChangeIdShort(change.changeId);
-  const commitIdShort = change.commitId.substring(0, 8);
-
+export function buildBlameHoverBody(change: ChangeWithDetails): string {
   const authoredDate = new Date(change.authoredDate);
   const when = `${relativeTime(change.authoredDate)} (${absoluteTimeFormatter.format(authoredDate)})`;
   const author = `**${escapeMarkdown(change.author.name)}** (${escapeMarkdown(change.author.email)})`;
 
-  const trimmedDescription = change.description.trim();
-  const description = trimmedDescription ? escapeMarkdown(trimmedDescription) : "*(no description)*";
+  const description = change.description.trim() || "*(no description)*";
+
+  return `${author}, ${when}\n\n${description}`;
+}
+
+/**
+ * The change/commit ID line and the action links. Belongs in a MarkdownString
+ * with `isTrusted: { enabledCommands: BLAME_HOVER_COMMANDS }` so the links work.
+ */
+export function buildBlameHoverActions(change: ChangeWithDetails, documentUri: string): string {
+  const changeIdFull = change.changeId.changeId;
+  const changeIdShort = formatChangeIdShort(change.changeId);
+  const commitIdShort = change.commitId.substring(0, 8);
 
   const badges = [
     ...(change.divergent ? ["divergent"] : []),
@@ -65,11 +69,5 @@ export function buildBlameHoverMarkdown(change: ChangeWithDetails, documentUri: 
     commandLink("Copy Web URL", "jj.blameCopyCommitUrl", [documentUri, changeIdFull], "Copy a link to this commit"),
   ];
 
-  return [
-    `${author}, ${when}`,
-    description,
-    "---",
-    `\`${changeIdShort}\` • \`${commitIdShort}\`${badgeText}`,
-    actions.join(" | "),
-  ].join("\n\n");
+  return `\`${changeIdShort}\` • \`${commitIdShort}\`${badgeText}\n\n${actions.join(" | ")}`;
 }
