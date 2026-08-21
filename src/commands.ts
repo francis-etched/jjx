@@ -501,6 +501,68 @@ export function registerInitCommands(state: ExtensionState): void {
     { errorPrefix: "Failed to open file" },
   );
 
+  // The jj.blame* commands are invoked via command: links in the inline blame
+  // hover (see blame-hover.ts), so their arguments must stay JSON-serializable.
+  const getRepoFromUriString = (uriString: string) => {
+    const uri = vscode.Uri.parse(uriString);
+    const repo = state.workspaceSCM.getRepositoryFromUri(uri);
+    if (!repo) {
+      throw new Error("Repository not found");
+    }
+    return { uri, repo };
+  };
+
+  registerCommand(
+    context,
+    "jj.blameShowDiff",
+    async (uriString: string, changeId: FullChangeId) => {
+      const { uri, repo } = getRepoFromUriString(uriString);
+      await openFileDiff(repo, uri.fsPath, changeId);
+    },
+    { errorPrefix: "Failed to show diff" },
+  );
+
+  registerCommand(
+    context,
+    "jj.blameOpenFileAtRevision",
+    async (uriString: string, changeId: FullChangeId, displayId: string) => {
+      const uri = vscode.Uri.parse(uriString);
+      await vscode.commands.executeCommand(
+        "vscode.open",
+        toJJUri(toWorkspaceUri(uri.fsPath), { rev: changeId }),
+        {},
+        formatAtRevTitle(path.basename(uri.fsPath), displayId),
+      );
+    },
+    { errorPrefix: "Failed to open file" },
+  );
+
+  registerCommand(
+    context,
+    "jj.blameCopyText",
+    async (text: string) => {
+      await vscode.env.clipboard.writeText(text);
+    },
+    { errorPrefix: "Failed to copy" },
+  );
+
+  registerCommand(
+    context,
+    "jj.blameCopyCommitUrl",
+    async (uriString: string, changeId: FullChangeId) => {
+      const { repo } = getRepoFromUriString(uriString);
+      const url = await repo.getCommitUrl(changeId);
+      if (!url) {
+        vscode.window.showInformationMessage(
+          "No web URL is available for this commit. Set jjx.baseWebURL or add a git remote.",
+        );
+        return;
+      }
+      await vscode.env.clipboard.writeText(url);
+    },
+    { errorPrefix: "Failed to copy web URL" },
+  );
+
   registerCommand(
     context,
     "jj.toggleDiffView",

@@ -5,6 +5,7 @@ import type { ExtensionState } from "./extension-state";
 import { relativeTime } from "./relative-time";
 import { formatChangeIdShort } from "./utils";
 import { toWorkspaceUri } from "./workspace-paths";
+import { BLAME_HOVER_COMMANDS, buildBlameHoverMarkdown } from "./blame-hover";
 
 export function registerAnnotations(state: ExtensionState): void {
   const context = state.context;
@@ -16,6 +17,7 @@ export function registerAnnotations(state: ExtensionState): void {
     },
     rangeBehavior: vscode.DecorationRangeBehavior.OpenOpen,
   });
+  context.subscriptions.push(annotationDecoration);
   let annotateInfo:
     | {
         uri: vscode.Uri;
@@ -64,7 +66,12 @@ export function registerAnnotations(state: ExtensionState): void {
           }
           const desc = change.description ? change.description.split("\n")[0] : "(no description)";
           const contextText = `${change.author.name}, ${relativeTime(change.authoredDate)} • ${formatChangeIdShort(change.changeId)} • ${desc}`;
+          const hoverMessage = new vscode.MarkdownString(
+            buildBlameHoverMarkdown(change, editor.document.uri.toString()),
+          );
+          hoverMessage.isTrusted = { enabledCommands: BLAME_HOVER_COMMANDS };
           decorations.push({
+            hoverMessage,
             renderOptions: {
               after: {
                 backgroundColor: "#00000000",

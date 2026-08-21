@@ -306,6 +306,28 @@
         "title": "Fetch from Selected Remote...",
         "category": "Jujutsu",
         "icon": "$(repo-fetch)"
+      },
+      {
+        "command": "jj.blameShowDiff",
+        "title": "Show Diff for Blamed Change",
+        "category": "Jujutsu",
+        "icon": "$(compare-changes)"
+      },
+      {
+        "command": "jj.blameOpenFileAtRevision",
+        "title": "Open File at Blamed Revision",
+        "category": "Jujutsu",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "jj.blameCopyText",
+        "title": "Copy Blame Text",
+        "category": "Jujutsu"
+      },
+      {
+        "command": "jj.blameCopyCommitUrl",
+        "title": "Copy Web URL for Blamed Change",
+        "category": "Jujutsu"
       }
     ],
     "submenus": [
@@ -732,6 +754,22 @@
         },
         {
           "command": "jj.deleteAllUntrackedFiles",
+          "when": "false"
+        },
+        {
+          "command": "jj.blameShowDiff",
+          "when": "false"
+        },
+        {
+          "command": "jj.blameOpenFileAtRevision",
+          "when": "false"
+        },
+        {
+          "command": "jj.blameCopyText",
+          "when": "false"
+        },
+        {
+          "command": "jj.blameCopyCommitUrl",
           "when": "false"
         }
       ]
