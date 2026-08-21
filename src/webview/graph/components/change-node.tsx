@@ -2,6 +2,7 @@ import { useComputed, type ReadonlySignal } from "@preact/signals";
 import { type HTMLAttributes, type RefObject } from "preact";
 import { memo } from "preact/compat";
 import { editChange } from "../edit-change";
+import { useEffect, useRef } from "preact/hooks";
 import { useDragDrop } from "../hooks/use-drag-drop";
 import { createTooltipTimers } from "../hooks/tooltip-timers";
 import dragGhostStyles from "./drag-ghost.module.css";
@@ -19,6 +20,8 @@ import {
   postMessage,
   showTooltips,
   showChangedFiles,
+  expandedFileChanges,
+  rowLayoutTick,
   dragBookmarkName,
   dragFile,
   pillContextMenu,
@@ -91,6 +94,25 @@ export function ChangeNodeRow({ change, index, nodeData, changeIdRef, compact, s
       command: "selectChange",
       selectedNodes: Array.from(outcome.selection),
     });
+  };
+
+  const toggleFilesChangeId =
+    showingFiles && change.branchType !== "~" && !change.elided && (change.changedFiles?.length ?? 0) > 0
+      ? change.id.changeId
+      : null;
+
+  const handleToggleFiles = (e: MouseEvent) => {
+    e.stopPropagation();
+    if (isDragging.value || justFinishedDrag.value || toggleFilesChangeId === null) {
+      return;
+    }
+    const newExpanded = new Set(expandedFileChanges.value);
+    if (newExpanded.has(toggleFilesChangeId)) {
+      newExpanded.delete(toggleFilesChangeId);
+    } else {
+      newExpanded.add(toggleFilesChangeId);
+    }
+    expandedFileChanges.value = newExpanded;
   };
 
   const handleDoubleClick = () => {
@@ -175,7 +197,13 @@ export function ChangeNodeRow({ change, index, nodeData, changeIdRef, compact, s
       onMouseLeave={handleMouseLeave}
       {...dragProps}
     >
-      <div class={styles.changeIdLeft} data-role="change-id" ref={changeIdRef}>
+      <div
+        class={cx(styles.changeIdLeft, toggleFilesChangeId !== null && styles.changeIdToggle)}
+        data-role="change-id"
+        ref={changeIdRef}
+        onClick={toggleFilesChangeId !== null ? handleToggleFiles : undefined}
+        onDblClick={toggleFilesChangeId !== null ? (e) => e.stopPropagation() : undefined}
+      >
         {change.branchType !== "~" && (
           <>
             {change.conflict && (
@@ -259,6 +287,19 @@ const MemoizedChangeNodeTextContent = memo(function ChangeNodeTextContent({
   const localBookmarkNames = new Set(change.localBookmarks.map((b) => b.name));
   const localTagNames = new Set(change.localTags.map((t) => t.name));
   const style = graphStyle.value;
+  const filesExpanded = expandedFileChanges.value.has(change.id.changeId);
+
+  // Row heights change when the file list expands/collapses; bump the layout tick after the DOM
+  // has been updated so the SVG circles and connection lines re-measure. Initial layout is already
+  // covered by the currentChanges-triggered measurement, so skip the mount run.
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      return;
+    }
+    rowLayoutTick.value++;
+  }, [filesExpanded]);
 
   return (
     <div
@@ -532,9 +573,11 @@ const MemoizedChangeNodeTextContent = memo(function ChangeNodeTextContent({
         )}
       </div>
       {style !== "compact" && <div class={styles.description}>{change.description}</div>}
-      {showChangedFiles.value && !change.elided && change.changedFiles && change.changedFiles.length > 0 && (
-        <ChangedFileList change={change} />
-      )}
+      {showChangedFiles.value &&
+        !change.elided &&
+        change.changedFiles &&
+        change.changedFiles.length > 0 &&
+        filesExpanded && <ChangedFileList change={change} />}
     </div>
   );
 });

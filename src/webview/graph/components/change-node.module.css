@@ -134,6 +134,23 @@
   margin-top: 2px;
 }
 
+.changeIdToggle {
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+/* The whole row already gets list-hoverBackground on hover, so the toggle needs a visibly
+   distinct treatment: a button-like translucent fill plus an outline. */
+.changeIdToggle:hover {
+  background: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground));
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+.changeIdToggle:hover .changeIdSuffix {
+  opacity: 1;
+}
+
 .changedFiles {
   margin-top: 2px;
   padding-left: 14px;

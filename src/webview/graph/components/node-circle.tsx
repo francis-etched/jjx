@@ -3,6 +3,7 @@ import {
   currentChanges,
   currentGraph,
   changeIdHorizontalOffset,
+  rowLayoutTick,
   selectedNodes,
   hoveredChangeId,
   connectedHighlight,
@@ -70,6 +71,7 @@ export function NodeCircles() {
   useSignalEffect(() => {
     void currentChanges.value;
     void changeIdHorizontalOffset.value;
+    void rowLayoutTick.value;
 
     const graph = currentGraph.value;
     if (!graph) {

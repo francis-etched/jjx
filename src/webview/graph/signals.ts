@@ -43,6 +43,10 @@ export const graphStyle = signal("full");
 export const changeDoubleClickAction = signal("new");
 export const showTooltips = signal(true);
 export const showChangedFiles = signal(false);
+/** Changes whose file list is expanded; collapsed by default. */
+export const expandedFileChanges = signal<Set<FullChangeId>>(new Set());
+/** Bumped after a row expands/collapses its file list so the SVG overlays re-measure row positions. */
+export const rowLayoutTick = signal(0);
 export const supportsTagTracking = signal(false);
 export const currentWorkspace = signal<string | null>(null);
 export const scrollY = signal(0);

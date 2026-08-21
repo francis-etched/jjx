@@ -45,6 +45,8 @@ test.describe("with showChangedFiles enabled", () => {
     const nodes = graphFrame.locator("#nodes > div");
     await expect(nodes).toHaveCount(4);
 
+    // Expand commit B's file list (collapsed by default).
+    await nodes.nth(1).locator('[data-role="change-id"]').click();
     const bFile = graphFrame.locator('[data-role="changed-file"][data-path="b.txt"]');
     await expect(bFile).toBeVisible();
 

@@ -16,10 +16,18 @@ test.describe("with showChangedFiles enabled", () => {
     await testRepo.commitFile("a.txt", "content a", "commit A");
     await testRepo.commitFile("b.txt", "content b", "commit B");
 
-    await expect(graphFrame.locator('[data-role="changed-file"][data-path="a.txt"]')).toBeVisible();
-    await expect(graphFrame.locator('[data-role="changed-file"][data-path="b.txt"]')).toBeVisible();
+    const nodes = graphFrame.locator("#nodes > div");
+    await expect(nodes).toHaveCount(4);
 
+    // File lists are collapsed by default.
+    await expect(graphFrame.locator('[data-role="changed-file"]')).toHaveCount(0);
+
+    // Clicking the change id expands only that commit's file list.
+    await nodes.nth(2).locator('[data-role="change-id"]').click();
     const aFile = graphFrame.locator('[data-role="changed-file"][data-path="a.txt"]');
+    await expect(aFile).toBeVisible();
+    await expect(graphFrame.locator('[data-role="changed-file"][data-path="b.txt"]')).toHaveCount(0);
+
     await aFile.click();
 
     const diffEditor = workbox.locator(".editor-instance");
@@ -60,6 +68,7 @@ test.describe("with showChangedFiles enabled", () => {
     const changeRow = graphFrame.locator(`#nodes > div[data-change-id^="${conflictedChangeId}/"]`);
     await expect(changeRow).toBeVisible();
 
+    await changeRow.locator('[data-role="change-id"]').click();
     const conflictFile = changeRow.locator('[data-role="changed-file"][data-path="conflict.txt"]');
     await expect(conflictFile).toBeVisible();
     // The status letter keeps its plain meaning but is marked as conflicted
@@ -84,6 +93,9 @@ test.describe("with showChangedFiles enabled", () => {
 
     const workingCopyChangeId = (await testRepo.log("@"))[0].change_id;
     const commitAChangeId = (await testRepo.log("@-"))[0].change_id;
+
+    await graphFrame.locator(`#nodes > div[data-change-id^="${workingCopyChangeId}/"] [data-role="change-id"]`).click();
+    await graphFrame.locator(`#nodes > div[data-change-id^="${commitAChangeId}/"] [data-role="change-id"]`).click();
 
     const workingCopyFile = graphFrame
       .locator(`#nodes > div[data-change-id^="${workingCopyChangeId}/"]`)
@@ -179,5 +191,21 @@ test.describe("with showChangedFiles enabled", () => {
         )
         .toBe("a.txt");
     });
+  });
+
+  test("clicking the change id toggles the file list", async ({ graphFrame, testRepo }) => {
+    await testRepo.commitFile("a.txt", "content a", "commit A");
+
+    const nodes = graphFrame.locator("#nodes > div");
+    await expect(nodes).toHaveCount(3);
+
+    const changeId = nodes.nth(1).locator('[data-role="change-id"]');
+    const aFile = graphFrame.locator('[data-role="changed-file"][data-path="a.txt"]');
+
+    await expect(aFile).toHaveCount(0);
+    await changeId.click();
+    await expect(aFile).toBeVisible();
+    await changeId.click();
+    await expect(aFile).toHaveCount(0);
   });
 });

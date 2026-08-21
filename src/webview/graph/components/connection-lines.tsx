@@ -1,8 +1,8 @@
 import { useSignal, useSignalEffect } from "@preact/signals";
-import { currentChanges, currentGraph, changeIdHorizontalOffset, connectedHighlight } from "../signals";
 import type { FullChangeId } from "../../../graph-protocol";
 import { getLaneColor } from "../svg-utils";
 import { buildEdgeSegments, buildVisiblePathDs, type PathSegment } from "../connection-segments";
+import { currentChanges, currentGraph, changeIdHorizontalOffset, rowLayoutTick, connectedHighlight } from "../signals";
 import { cx } from "../utils";
 import styles from "./connection-lines.module.css";
 
@@ -20,6 +20,7 @@ export function ConnectionLines() {
   useSignalEffect(() => {
     void currentChanges.value;
     void changeIdHorizontalOffset.value;
+    void rowLayoutTick.value;
 
     const graph = currentGraph.value;
     if (!graph?.edges) {

@@ -6,6 +6,8 @@
 
 - **Drag a file onto another commit to move it** - With `jjx.showChangedFiles` enabled, dragging a changed file from one
   commit onto another squashes just that file's changes into the target (`jj squash --from ... --into ... <file>`)
+- **Collapsible per-commit file lists** - With `jjx.showChangedFiles` enabled, each commit's file list is now collapsed
+  by default; clicking the change id toggles it open and closed
 
 ## 1.16.1
 
