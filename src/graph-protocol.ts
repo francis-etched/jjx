@@ -127,6 +127,7 @@ export type WebviewToExtensionMessage =
   | { command: "untrackTag"; tag: string; remote: string }
   | { command: "pushTag"; tag: string }
   | { command: "cancelRemoteRefOperation"; refType: "bookmark" | "tag"; name: string }
+  | { command: "openInNewWorkspace"; changeId: FullChangeId }
   | { command: "forgetWorkspace"; workspace: string }
   | { command: "forgetAndDeleteWorkspace"; workspace: string }
   | { command: "copyWorkspacePath"; workspace: string }

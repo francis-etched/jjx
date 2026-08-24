@@ -4,6 +4,9 @@
 
 ### New Features
 
+- **Open a change in a new workspace** - A new "Open in New Workspace" action in the graph context menu creates a jj
+  workspace on top of the change (under the system temp directory) and opens it in a new VS Code window; the new
+  `jjx.newWorkspaceCopyFiles` setting lists untracked files to copy from the current workspace into new ones
 - **Drag a file onto another commit to move it** - With `jjx.showChangedFiles` enabled, dragging a changed file from one
   commit onto another squashes just that file's changes into the target (`jj squash --from ... --into ... <file>`)
 - **Collapsible per-commit file lists** - With `jjx.showChangedFiles` enabled, each commit's file list is now collapsed

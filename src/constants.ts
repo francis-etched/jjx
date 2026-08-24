@@ -3,6 +3,8 @@ export const TIMEOUTS = {
   GIT_FETCH: 60000,
   ANNOTATE: 60000,
   UPDATE_STALE: 30000,
+  // Materializes a full working copy, which can take a while on large repos.
+  WORKSPACE_ADD: 120000,
   SQUASH_TOOL: 10000,
   DIFF_TOOL: 20000,
   FALLBACK: 30000,

@@ -43,6 +43,16 @@ export function ContextMenu() {
       >
         New Child
       </MenuItem>
+      <MenuItem
+        action="openInNewWorkspace"
+        title="Create a New Workspace on This Change and Open It in a New Window"
+        onClick={() => {
+          postMessage({ command: "openInNewWorkspace", changeId: change.id.changeId });
+          contextMenu.value = null;
+        }}
+      >
+        Open in New Workspace
+      </MenuItem>
       <MenuSeparator />
       <MenuItem
         action="describe"

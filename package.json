@@ -916,6 +916,15 @@
           "description": "Automatically run 'jj workspace update-stale' when the working copy is stale",
           "scope": "resource"
         },
+        "jjx.newWorkspaceCopyFiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Files or directories (paths relative to the repository root) copied from the current workspace into a workspace newly created via 'Open in New Workspace', e.g. untracked config files like 'user.bazelrc'. Missing paths are skipped and existing files in the new workspace are never overwritten.",
+          "scope": "resource"
+        },
         "jjx.showChangedFiles": {
           "type": "boolean",
           "default": false,

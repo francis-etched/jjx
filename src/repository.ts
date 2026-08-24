@@ -1827,6 +1827,12 @@ export class JJRepository {
     await this.jjCommand(["workspace", "forget", name]);
   }
 
+  async addWorkspace(destinationPath: string, name: string, revision: string): Promise<void> {
+    await this.jjCommand(["workspace", "add", "--name", name, "--revision", revision, destinationPath], {
+      timeout: TIMEOUTS.WORKSPACE_ADD,
+    });
+  }
+
   async tryAutoUpdateStale(token?: vscode.CancellationToken): Promise<boolean> {
     const config = vscode.workspace.getConfiguration("jjx", toWorkspaceUri(this.repositoryRoot));
     if (!config.get<boolean>("autoUpdateStaleWorkspace")) {

@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import * as fs from "fs";
+import os from "os";
 import type { JJRepository, LogEntry, ParentRef } from "./repository";
 import { BookmarkBackwardsError, StaleWorkingCopyError } from "./errors";
 import { CancelledError } from "./process";
@@ -286,6 +287,9 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
             "delete tag",
             () => repo.deleteTag(message.tag),
           );
+          break;
+        case "openInNewWorkspace":
+          await this.openInNewWorkspace(repo, message.changeId);
           break;
         case "forgetWorkspace":
           if (await this.isCurrentWorkspace(repo, message.workspace)) {
@@ -852,6 +856,73 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
         return;
       }
       showErrorMessage(`Failed to ${errorLabel}`, error);
+    }
+  }
+
+  /**
+   * Opens the given change in a jj workspace in a new VS Code window. The
+   * workspace lives at <tmpdir>/jj-workspaces/<repoName>-<changeIdPrefix> and
+   * its working copy is a new empty change on top of the given change. If the
+   * directory already exists from an earlier invocation, it is reused and
+   * only the window is opened.
+   */
+  private async openInNewWorkspace(repo: JJRepository, changeId: FullChangeId): Promise<void> {
+    const repoName = path.basename(repo.repositoryRoot);
+    const workspaceName = `${repoName}-${changeId.slice(0, 8)}`;
+    const workspaceDir = path.join(os.tmpdir(), "jj-workspaces", workspaceName);
+    if (!fs.existsSync(workspaceDir)) {
+      try {
+        await vscode.window.withProgress(
+          {
+            location: vscode.ProgressLocation.Notification,
+            title: `Creating jj workspace "${workspaceName}"...`,
+          },
+          async () => {
+            await fs.promises.mkdir(path.dirname(workspaceDir), { recursive: true });
+            await repo.addWorkspace(workspaceDir, workspaceName, changeId);
+            await this.copyFilesIntoNewWorkspace(repo, workspaceDir);
+          },
+        );
+      } catch (error: unknown) {
+        showErrorMessage("Failed to create workspace", error);
+        return;
+      }
+      await this.refresh();
+    }
+    await vscode.commands.executeCommand("vscode.openFolder", toWorkspaceUri(workspaceDir), {
+      forceNewWindow: true,
+    });
+  }
+
+  /**
+   * Copies the paths listed in jjx.newWorkspaceCopyFiles from this workspace
+   * into a newly created workspace. Intended for untracked per-workspace
+   * configuration (e.g. a local bazelrc) that `jj workspace add` cannot carry
+   * over. Missing sources are skipped; existing targets are never overwritten.
+   */
+  private async copyFilesIntoNewWorkspace(repo: JJRepository, workspaceDir: string): Promise<void> {
+    const config = vscode.workspace.getConfiguration("jjx", toWorkspaceUri(repo.repositoryRoot));
+    const relativePaths = config.get<string[]>("newWorkspaceCopyFiles") ?? [];
+    const failures: string[] = [];
+    for (const relativePath of relativePaths) {
+      const source = joinRepositoryPath(repo.repositoryRoot, relativePath);
+      const target = path.join(workspaceDir, relativePath);
+      if (!fs.existsSync(source)) {
+        continue;
+      }
+      try {
+        await fs.promises.mkdir(path.dirname(target), { recursive: true });
+        await vscode.workspace.fs.copy(toWorkspaceUri(source), toWorkspaceUri(target), { overwrite: false });
+      } catch (error: unknown) {
+        if (error instanceof vscode.FileSystemError && error.code === "FileExists") {
+          continue;
+        }
+        logger.error(`Failed to copy "${relativePath}" into new workspace: ${String(error)}`);
+        failures.push(relativePath);
+      }
+    }
+    if (failures.length > 0) {
+      vscode.window.showWarningMessage(`Failed to copy into the new workspace: ${failures.join(", ")}`);
     }
   }
 
