@@ -525,6 +525,13 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
           break;
         }
         case "abandonChange": {
+          // Abandoning an empty, undescribed change with one parent and at most
+          // one child loses nothing and needs no rebase, so don't interrupt with
+          // a confirmation.
+          if (await repo.isTrivialToAbandon(message.changeId)) {
+            await this.withRefresh("abandon change", () => repo.abandonRetryImmutable(message.changeId));
+            break;
+          }
           const change = this.findRegularChange(message.changeId);
           const fullDescription = change ? change.fullDescription : "";
           const firstLine = fullDescription.split("\n")[0].trim() || "(no description set)";

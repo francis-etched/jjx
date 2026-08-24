@@ -383,6 +383,17 @@ const DIFF_STATS_FIELDS: TemplateFields = {
   },
 };
 
+/**
+ * Fields for deciding whether abandoning a change is trivially reversible, so
+ * the confirmation prompt can be skipped. Commit templates have no `children()`
+ * method, so the child count comes from a separate `children(x)` revset query.
+ */
+const ABANDON_SAFETY_FIELDS: TemplateFields = {
+  parent_count: { type: "number", expr: "self.parents().len()" },
+  description_length: { type: "number", expr: "description.len()" },
+  empty: { type: "boolean", expr: "empty" },
+};
+
 const CONFLICTED_FILES_FIELDS: TemplateFields = {
   conflicted_files: {
     type: "string_array",
@@ -423,6 +434,7 @@ export const STATUS_TEMPLATE = generateTemplate(STATUS_ENTRY_FIELDS);
 export const LOG_TEMPLATE = buildLogTemplate();
 export const DIFF_STATS_TEMPLATE = generateTemplate(DIFF_STATS_FIELDS);
 export const CONFLICTED_FILES_TEMPLATE = generateTemplate(CONFLICTED_FILES_FIELDS);
+export const ABANDON_SAFETY_TEMPLATE = generateTemplate(ABANDON_SAFETY_FIELDS);
 export const BOOKMARK_TRACKING_INFO_TEMPLATE = generateTemplate(BOOKMARK_TRACKING_INFO_FIELDS);
 export const REMOTE_REF_STATUS_TEMPLATE = generateTemplate(REMOTE_REF_STATUS_FIELDS);
 export const WORKSPACE_LIST_TEMPLATE = generateTemplate(WORKSPACE_LIST_FIELDS);

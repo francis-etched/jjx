@@ -11,6 +11,8 @@
   commit onto another squashes just that file's changes into the target (`jj squash --from ... --into ... <file>`)
 - **Collapsible per-commit file lists** - With `jjx.showChangedFiles` enabled, each commit's file list is now collapsed
   by default; clicking the change id toggles it open and closed
+- **Abandon empty changes without confirmation** - Abandoning an empty, undescribed change with one parent and at most
+  one child no longer asks for confirmation, since nothing is lost and no rebase needs reasoning about
 
 ## 1.16.1
 

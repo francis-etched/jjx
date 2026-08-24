@@ -14,6 +14,7 @@ import {
   REMOTE_REF_STATUS_TEMPLATE,
   CONFLICTED_FILES_TEMPLATE,
   WORKSPACE_LIST_TEMPLATE,
+  ABANDON_SAFETY_TEMPLATE,
 } from "./template-builder";
 import spawn from "cross-spawn";
 import type { ChildProcess } from "child_process";
@@ -110,6 +111,13 @@ export interface WorkspaceInfo {
   name: string;
   /** Absolute path of the workspace root, if it is recorded and resolvable. */
   root?: string;
+}
+
+/** One row of {@link JJRepository.isTrivialToAbandon}'s jj log query. */
+interface AbandonSafetyEntry {
+  parent_count: number;
+  description_length: number;
+  empty: boolean;
 }
 
 export class JJRepository {
@@ -1478,6 +1486,52 @@ export class JJRepository {
     return await collectProcessOutput(
       this.spawnJJ(["absorb", "-f", fromRev], { timeout: TIMEOUTS.DEFAULT, cwd: this.repositoryRoot }),
     );
+  }
+
+  /**
+   * Reports whether abandoning `rev` would lose no work and leave no rebase to
+   * reason about: it has no description, no changes, at most one child, and
+   * exactly one parent. Callers use this to skip the confirmation prompt, since
+   * re-creating such a change is a single `jj new`.
+   *
+   * A change with no parents (the root) or several parents (a merge) is never
+   * trivial: abandoning a merge reparents its children onto every parent.
+   *
+   * Returns false whenever the state can't be determined, so an unexpected jj
+   * failure keeps the prompt rather than silently dropping it.
+   */
+  async isTrivialToAbandon(rev: FullChangeId): Promise<boolean> {
+    let targetOutput: string;
+    let childrenOutput: string;
+    try {
+      [targetOutput, childrenOutput] = (
+        await Promise.all([
+          this.jjCommandRead(["log", "-r", rev, "--no-graph", "-T", ABANDON_SAFETY_TEMPLATE]),
+          this.jjCommandRead(["log", "-r", `children(${rev})`, "--no-graph", "-T", '"x\\n"']),
+        ])
+      ).map((buffer) => buffer.toString()) as [string, string];
+    } catch {
+      return false;
+    }
+
+    // A divergent change id resolves to several commits; abandoning it would
+    // touch all of them, which is never trivial.
+    const targetLines = targetOutput
+      .trim()
+      .split("\n")
+      .filter((line) => line.length > 0);
+    if (targetLines.length !== 1) {
+      return false;
+    }
+    let target: AbandonSafetyEntry;
+    try {
+      target = JSON.parse(targetLines[0]) as AbandonSafetyEntry;
+    } catch {
+      return false;
+    }
+
+    const childCount = childrenOutput.trim() === "" ? 0 : childrenOutput.trim().split("\n").length;
+    return target.description_length === 0 && target.empty && target.parent_count === 1 && childCount <= 1;
   }
 
   async abandonRetryImmutable(rev: FullChangeId, customMessage?: string) {

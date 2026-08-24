@@ -59,6 +59,64 @@ test("abandon single change via context menu", async ({ graphFrame, testRepo, wo
   }).toPass();
 });
 
+test("abandon an empty, undescribed change without confirmation", async ({ graphFrame, testRepo, workbox }) => {
+  await testRepo.commitFile("a.txt", "content a", "A");
+  // An empty, undescribed change between A and C: nothing to lose, one parent,
+  // one child, so abandoning it should not prompt.
+  await testRepo.jjCommand(["new", "-m", ""]);
+  await testRepo.commitFile("c.txt", "content c", "C");
+
+  const nodes = graphFrame.locator("#nodes > div");
+  await expect(nodes).toHaveCount(5);
+
+  // Nodes are newest first: working copy, C, the empty change, A, root.
+  const emptyChange = nodes.nth(2);
+  await emptyChange.click({ button: "right" });
+
+  const abandonItem = graphFrame.locator('[data-action="abandon"]');
+  await expect(abandonItem).toBeVisible();
+  await abandonItem.click();
+
+  await expect(workbox.locator(".monaco-dialog-box")).not.toBeVisible();
+  await expect(nodes).toHaveCount(4);
+
+  await expect(async () => {
+    expect(getParents(await testRepo.log(), "C")).toEqual(["A"]);
+  }).toPass();
+});
+
+test("confirm before abandoning an empty change with several children", async ({ graphFrame, testRepo, workbox }) => {
+  await testRepo.commitFile("a.txt", "content a", "A");
+  // An empty, undescribed fork point with two children. `jj commit` would
+  // extend the branch linearly, so build each child with an explicit parent.
+  await testRepo.jjCommand(["new", "-m", ""]);
+  const forkPoint = (await testRepo.log("@"))[0].change_id;
+  await testRepo.jjCommand(["new", forkPoint, "-m", "B"]);
+  await testRepo.writeFile("b.txt", "content b");
+  await testRepo.jjCommand(["new", forkPoint, "-m", "C"]);
+  await testRepo.writeFile("c.txt", "content c");
+  expect(await testRepo.log(`children(${forkPoint})`)).toHaveLength(2);
+
+  const nodes = graphFrame.locator("#nodes > div");
+  // Wait for the graph to settle before interacting, so the working-copy
+  // snapshot cannot re-render it mid-click.
+  await expect(nodes).toHaveCount(6);
+
+  const abandonItem = graphFrame.locator('[data-action="abandon"]');
+  const dialog = workbox.locator(".monaco-dialog-box");
+
+  // The fork point is empty and undescribed, but abandoning it rebases two
+  // children, so the confirmation stays. Newest first: C, B, the fork point,
+  // the change left behind by committing A, A, root.
+  const forkNode = nodes.nth(2);
+  await forkNode.click({ button: "right" });
+  await expect(abandonItem).toBeVisible();
+  await abandonItem.click();
+
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText("(no description set)");
+});
+
 test("abandon multiple selected changes via context menu", async ({ graphFrame, testRepo, workbox }) => {
   await testRepo.commitFile("a.txt", "content a", "A");
   await testRepo.commitFile("b.txt", "content b", "B");
