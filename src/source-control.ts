@@ -1002,6 +1002,15 @@ class RepositorySourceControlManager {
 
 type WorkspaceFileStatus = Omit<FileStatus, "path"> & { path: WorkspacePath };
 
+/**
+ * A resource state that also carries the [label, original, modified] URI triple used by the
+ * built-in `vscode.changes` command, so `jj.openAllChanges` can open a whole resource group in
+ * one multi-diff editor regardless of the per-file click action.
+ */
+export interface JJSourceControlResourceState extends vscode.SourceControlResourceState {
+  multiDiff?: [vscode.Uri, vscode.Uri, vscode.Uri];
+}
+
 function buildResourceStates(
   fileStatuses: FileStatus[],
   options: {
@@ -1011,7 +1020,7 @@ function buildResourceStates(
     conflictedFiles: Set<NormalizedPath> | undefined;
     workingCopyConflictedFiles?: Set<NormalizedPath> | undefined;
   },
-): vscode.SourceControlResourceState[] {
+): JJSourceControlResourceState[] {
   const { changeId, toRev, fileClickAction, conflictedFiles, workingCopyConflictedFiles } = options;
   const diffOriginalRev = changeId ?? "@";
 
@@ -1032,11 +1041,13 @@ function buildResourceStates(
             ...(uriFileStatus.renamedFrom ? { renamedFrom: uriFileStatus.renamedFrom } : {}),
           });
     const afterUri = changeId ? toJJUri(vscode.Uri.file(uriFileStatus.path), { rev: changeId }) : workingCopyUri;
+    const diffRightUri = fileStatus.type === "D" ? toJJUri(workingCopyUri, { deleted: true }) : afterUri;
     return {
       resourceUri: afterUri,
       // Encodes the file status so menu `when` clauses in package.json can target e.g.
       // deleted files, which cannot be opened at the change's own revision.
       contextValue: `status-${uriFileStatus.type.toLowerCase()}`,
+      multiDiff: [workingCopyUri, beforeUri, diffRightUri],
       decorations: {
         strikeThrough: uriFileStatus.type === "D",
         tooltip: path.basename(uriFileStatus.file),
@@ -1083,7 +1094,7 @@ function buildComparisonDiffResourceStates(
     fromIsWorkingCopy: boolean;
     toIsWorkingCopy: boolean;
   },
-): vscode.SourceControlResourceState[] {
+): JJSourceControlResourceState[] {
   const { from, to, mode, fromIsWorkingCopy, toIsWorkingCopy } = options;
   const fromShort = fromIsWorkingCopy ? formatWorkingCopyTitle() : formatChangeIdShort(from);
   const toShort = toIsWorkingCopy ? formatWorkingCopyTitle() : formatChangeIdShort(to);
@@ -1106,6 +1117,7 @@ function buildComparisonDiffResourceStates(
           : makeSideUri("right");
     return {
       resourceUri: makeSideUri("right"),
+      multiDiff: [fileUri, leftUri, rightUri],
       decorations: {
         strikeThrough: fileStatus.type === "D",
         tooltip: path.basename(fileStatus.file),

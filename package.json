@@ -131,6 +131,12 @@
         "icon": "$(sign-in)"
       },
       {
+        "command": "jj.openAllChanges",
+        "title": "Open All Changes",
+        "category": "Jujutsu",
+        "icon": "$(diff-multiple)"
+      },
+      {
         "command": "jj.viewInterdiff",
         "title": "View Interdiff",
         "category": "Jujutsu",
@@ -485,6 +491,11 @@
       ],
       "scm/resourceGroup/context": [
         {
+          "command": "jj.openAllChanges",
+          "when": "scmProvider == jj && scmResourceGroup != untracked && jj.jjBinaryFound",
+          "group": "inline@1"
+        },
+        {
           "command": "jj.squashToParentResourceGroup",
           "when": "scmProvider == jj && scmResourceGroup == @ && jj.jjBinaryFound",
           "group": "inline"
@@ -640,6 +651,10 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "jj.openAllChanges",
+          "when": "false"
+        },
         {
           "command": "jj.openFileResourceState",
           "when": "false"

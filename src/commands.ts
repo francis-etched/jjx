@@ -29,6 +29,7 @@ import {
   shouldOpenWorkingCopyRightSide,
 } from "./utils";
 import { getMergeEditorConfigs } from "./jj-editor";
+import type { JJSourceControlResourceState } from "./source-control";
 import { handleJJCommand } from "./process";
 
 function registerCommand<T extends unknown[]>(
@@ -846,6 +847,29 @@ export function registerInitCommands(state: ExtensionState): void {
       await repository.editRetryImmutable(resourceGroup.id as FullChangeId | "@");
     },
     { errorPrefix: "Failed to switch to change" },
+  );
+
+  registerCommand(
+    context,
+    "jj.openAllChanges",
+    async (resourceGroup: vscode.SourceControlResourceGroup) => {
+      const resources = resourceGroup.resourceStates
+        .map((resourceState) => (resourceState as JJSourceControlResourceState).multiDiff)
+        .filter((multiDiff) => multiDiff !== undefined);
+      if (resources.length === 0) {
+        vscode.window.showInformationMessage("There are no changes to show.");
+        return;
+      }
+      // The group label can contain a full multi-line change description; keep only the first
+      // line so the editor tab shows just the commit header.
+      const title = resourceGroup.label.split("\n", 1)[0].trim();
+      await vscode.commands.executeCommand("vscode.changes", title, resources);
+      // Pin the multi-diff editor so it leaves preview mode. Otherwise the per-file "Open File"
+      // button (which opens files as preview editors) would replace the multi-diff tab instead
+      // of opening the file in its own tab.
+      await vscode.commands.executeCommand("workbench.action.keepEditor");
+    },
+    { errorPrefix: "Failed to open changes" },
   );
 
   registerCommand(
