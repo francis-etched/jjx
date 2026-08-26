@@ -6,8 +6,6 @@ import { repositoryRelativePath, resolveRepositoryPath, toRealPathSpelling, toWo
 import type { ExtensionState } from "./extension-state";
 import type { ChangeId, FileStatus, FullChangeId } from "./types";
 import { OperationTreeItem } from "./operation-log-tree-view";
-import type { SearchedFileTreeItem } from "./searched-files-tree-view";
-import { pickFilesByPath } from "./fuzzy-file-picker";
 import { getParams, isComparisonDiffUri, resolveRev, toJJUri, type JJUriParams } from "./uri";
 import {
   computeLineChanges,
@@ -904,20 +902,9 @@ export function registerInitCommands(state: ExtensionState): void {
     context,
     "jj.searchedFiles.add",
     async () => {
-      const graphWebview = state.graphWebview;
-      const repo = graphWebview?.repository;
-      if (!graphWebview || !repo) {
-        return;
-      }
-      const trackedFiles = await repo.fileList();
-      const searched = new Set(graphWebview.getSearchedFiles().map((f) => f.path));
-      const candidates = trackedFiles.map((f) => f.replace(/\\/g, "/")).filter((f) => !searched.has(f));
-      const picked = await pickFilesByPath(candidates);
-      if (picked && picked.length > 0) {
-        graphWebview.addSearchedFiles(picked);
-      }
+      await vscode.commands.executeCommand("jjSearchedFiles.focus");
     },
-    { errorPrefix: "Failed to add file to search" },
+    { errorPrefix: "Failed to open the file search" },
   );
 
   context.subscriptions.push(
@@ -937,12 +924,6 @@ export function registerInitCommands(state: ExtensionState): void {
         graphWebview.addSearchedFiles(relPaths);
       },
     ),
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand("jj.searchedFiles.remove", (item: SearchedFileTreeItem) => {
-      state.graphWebview?.removeSearchedFile(item.relPath);
-    }),
   );
 
   context.subscriptions.push(

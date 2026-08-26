@@ -20,9 +20,11 @@
     "graph/**/*",
     "split/**/*",
     "details/**/*",
+    "file-search/**/*",
     "../graph-protocol.ts",
     "../split-protocol.ts",
-    "../details-protocol.ts"
+    "../details-protocol.ts",
+    "../file-search-protocol.ts"
   ],
   "exclude": ["node_modules", "dist"]
 }

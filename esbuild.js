@@ -17,6 +17,7 @@ function copyFile(src, dest) {
 }
 
 const staticAssets = [
+  ["src/webview/file-search.html", "dist/webview/file-search.html"],
   ["src/webview/graph.html", "dist/webview/graph.html"],
   ["src/webview/split.html", "dist/webview/split.html"],
   ["src/webview/details.html", "dist/webview/details.html"],
@@ -119,6 +120,13 @@ async function main() {
       loader: { ".module.css": "local-css" },
     }),
     createContext("src/webview/details/main.tsx", "dist/webview/details.js", {
+      format: "iife",
+      platform: "browser",
+      jsx: "automatic",
+      jsxImportSource: "preact",
+      loader: { ".module.css": "local-css" },
+    }),
+    createContext("src/webview/file-search/main.tsx", "dist/webview/file-search.js", {
       format: "iife",
       platform: "browser",
       jsx: "automatic",

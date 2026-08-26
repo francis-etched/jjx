@@ -1,0 +1,115 @@
+body {
+  padding: 0;
+  margin: 0;
+  color: var(--vscode-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  background-color: var(--vscode-sideBar-background);
+}
+
+.file-search {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.file-search input {
+  margin: 6px 8px;
+  padding: 3px 6px;
+  color: var(--vscode-input-foreground);
+  background-color: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 2px;
+  outline: none;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.file-search input:focus {
+  border-color: var(--vscode-focusBorder);
+}
+
+.file-search input::placeholder {
+  color: var(--vscode-input-placeholderForeground);
+}
+
+.list {
+  flex: 1;
+  overflow-y: auto;
+  user-select: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.row:hover {
+  background-color: var(--vscode-list-hoverBackground);
+}
+
+.row.active {
+  background-color: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+}
+
+.file-icon {
+  flex: none;
+  color: var(--vscode-symbolIcon-fileForeground, var(--vscode-foreground));
+}
+
+.file-name {
+  flex: none;
+}
+
+.file-dir {
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.9em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.row.active .file-dir {
+  color: inherit;
+  opacity: 0.8;
+}
+
+.match {
+  color: var(--vscode-list-highlightForeground);
+  font-weight: bold;
+}
+
+.row.active .match {
+  color: var(--vscode-list-focusHighlightForeground, var(--vscode-list-highlightForeground));
+}
+
+.row-check,
+.row-remove {
+  flex: none;
+  margin-left: auto;
+}
+
+.row-remove {
+  visibility: hidden;
+  padding: 1px;
+  border-radius: 3px;
+}
+
+.row:hover .row-remove {
+  visibility: visible;
+}
+
+.row-remove:hover {
+  background-color: var(--vscode-toolbar-hoverBackground);
+}
+
+.hint {
+  padding: 8px;
+  color: var(--vscode-descriptionForeground);
+  white-space: normal;
+}

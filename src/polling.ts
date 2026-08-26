@@ -4,7 +4,7 @@ import { createThrottledAsyncFn } from "./utils";
 import { OperationLogManager, OperationLogTreeDataProvider } from "./operation-log-tree-view";
 import { JJGraphWebview } from "./graph-webview";
 import { DetailsWebview } from "./details-webview";
-import { SearchedFilesManager } from "./searched-files-tree-view";
+import { SearchedFilesWebview } from "./searched-files-webview";
 import type { ExtensionState } from "./extension-state";
 import type { ForceRefresh } from "./source-control";
 
@@ -71,7 +71,8 @@ export function initInfrastructure(state: ExtensionState) {
     }),
   );
 
-  context.subscriptions.push(new SearchedFilesManager(graphWebview));
+  const searchedFilesWebview = new SearchedFilesWebview(context.extensionUri, graphWebview, context);
+  context.subscriptions.push(searchedFilesWebview);
 
   const operationLogTreeDataProvider = new OperationLogTreeDataProvider(initialSelectedRepo);
   const operationLogManager = new OperationLogManager(operationLogTreeDataProvider);
@@ -90,6 +91,7 @@ export function initInfrastructure(state: ExtensionState) {
 
   context.subscriptions.push(
     state.workspaceSCM.onDidRepoUpdate(({ repoSCM, operationId }) => {
+      searchedFilesWebview.invalidateFileList();
       const opLogRepo = operationLogManager.operationLogTreeDataProvider.getSelectedRepo();
       if (opLogRepo && opLogRepo.repositoryRoot === repoSCM.repositoryRoot) {
         void operationLogManager.refresh(operationId);

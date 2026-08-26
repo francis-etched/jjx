@@ -14,5 +14,12 @@
     "plugins": [{ "name": "typescript-plugin-css-modules" }]
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "src/webview/graph", "src/webview/split", "src/webview/details"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/webview/graph",
+    "src/webview/split",
+    "src/webview/details",
+    "src/webview/file-search"
+  ]
 }
