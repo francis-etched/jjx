@@ -48,7 +48,7 @@
     "viewsWelcome": [
       {
         "view": "jjSearchedFiles",
-        "contents": "Commits touching the searched files are highlighted in the JJ Graph. Click a file in the Source Control view or add files by path.\n[Add Files](command:jj.searchedFiles.add)"
+        "contents": "Commits touching the searched files are highlighted in the JJ Graph. Right-click files in the Source Control view or add files by path.\n[Add Files](command:jj.searchedFiles.add)"
       }
     ],
     "commands": [

@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import * as fs from "fs";
 import os from "os";
-import { resolveRealpath, type JJRepository, type LogEntry, type ParentRef } from "./repository";
+import type { JJRepository, LogEntry, ParentRef } from "./repository";
 import { BookmarkBackwardsError, StaleWorkingCopyError } from "./errors";
 import { CancelledError } from "./process";
 import path from "path";
@@ -49,8 +49,6 @@ export interface GraphSelection {
 export interface SearchedFile {
   /** Repository-relative path with forward slashes. */
   path: string;
-  /** Pre-rename path, so commits before the rename are highlighted too. */
-  renamedFrom?: string;
 }
 
 type Message = WebviewToExtensionMessage;
@@ -66,9 +64,9 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
   private currentChanges: ChangeNode[] = [];
   private changesById = new Map<FullChangeId, RegularChangeNode>();
   private elideOverride: boolean | null = null;
-  // Files whose touching commits are highlighted in the graph. Clicking a file in the SCM view
-  // replaces the list; the File Search view adds/removes entries. The highlight is recomputed on
-  // every graph refresh so it stays accurate.
+  // Files whose touching commits are highlighted in the graph, managed via the File Search view
+  // and the SCM context menu. The highlight is recomputed on every graph refresh so it stays
+  // accurate.
   private searchedFiles: SearchedFile[] = [];
 
   private _onDidChangeSearchedFiles = new vscode.EventEmitter<void>();
@@ -872,27 +870,6 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
     return this.searchedFiles;
   }
 
-  /**
-   * Replaces the searched files with the file clicked in the SCM view, so the
-   * commits touching it are highlighted in the graph.
-   */
-  public setSearchedFileFromClick(fileUri: vscode.Uri, renamedFrom?: string): void {
-    if (!this.repository) {
-      return;
-    }
-    const relPath = path.relative(this.repository.repositoryRoot, resolveRealpath(fileUri.fsPath));
-    if (relPath.startsWith("..")) {
-      // The graph is showing a different repository than the clicked file's.
-      return;
-    }
-    this.updateSearchedFiles([
-      {
-        path: relPath.replace(/\\/g, "/"),
-        ...(renamedFrom ? { renamedFrom: renamedFrom.replace(/\\/g, "/") } : {}),
-      },
-    ]);
-  }
-
   /** Adds files (repository-relative, forward slashes) to the searched files. */
   public addSearchedFiles(relPaths: string[]): void {
     const existing = new Set(this.searchedFiles.map((f) => f.path));
@@ -929,7 +906,7 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
       this.postMessageToWebview({ command: "highlightFileChanges", commitIds: [] });
       return;
     }
-    const relativePaths = this.searchedFiles.flatMap((f) => [f.path, ...(f.renamedFrom ? [f.renamedFrom] : [])]);
+    const relativePaths = this.searchedFiles.map((f) => f.path);
     try {
       const logLimit = vscode.workspace.getConfiguration("jjx").get<number>("logLimit") ?? DEFAULT_LOG_LIMIT;
       const commitIds = await this.repository.logCommitIdsTouchingFiles(

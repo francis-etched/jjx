@@ -402,16 +402,6 @@ export function registerPreInitCommands(state: ExtensionState): void {
     { errorPrefix: "Failed to open file" },
   );
 
-  registerCommand(
-    context,
-    "jj.scmFileClick",
-    async (fileUri: vscode.Uri, inner: { command: string; args: unknown[] }, renamedFrom?: string) => {
-      state.graphWebview?.setSearchedFileFromClick(fileUri, renamedFrom);
-      await vscode.commands.executeCommand(inner.command, ...inner.args);
-    },
-    { errorPrefix: "Failed to open file" },
-  );
-
   registerCommand(context, "jj.openMergeEditor", async (uri: vscode.Uri, changeId?: FullChangeId | "@") => {
     const repo = state.workspaceSCM.getRepositoryFromUri(uri);
     if (!repo) {
