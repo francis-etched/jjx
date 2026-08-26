@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import * as fs from "fs";
 import os from "os";
-import type { JJRepository, LogEntry, ParentRef } from "./repository";
+import { resolveRealpath, type JJRepository, type LogEntry, type ParentRef } from "./repository";
 import { BookmarkBackwardsError, StaleWorkingCopyError } from "./errors";
 import { CancelledError } from "./process";
 import path from "path";
@@ -58,6 +58,9 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
   private currentChanges: ChangeNode[] = [];
   private changesById = new Map<FullChangeId, RegularChangeNode>();
   private elideOverride: boolean | null = null;
+  // Repository-relative paths (forward slashes) of the last file clicked in the
+  // SCM view, so the commits touching it stay highlighted across refreshes.
+  private highlightedFilePaths: string[] | undefined;
   private readonly splitWebview: SplitWebview;
   private lastFiredSelection: GraphSelection[] = [];
 
@@ -848,7 +851,51 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
       this.panel.title = `JJ Graph (${path.basename(this.repository.repositoryRoot)})`;
     }
     if (prevRoot !== repo.repositoryRoot) {
+      this.highlightedFilePaths = undefined;
       await this.refresh();
+    }
+  }
+
+  /**
+   * Highlights the graph nodes of the commits that touch the given file.
+   * Called when a file is clicked in the SCM view; the highlight is recomputed
+   * on every graph refresh so it stays accurate until another file is clicked.
+   */
+  public async highlightFile(fileUri: vscode.Uri, renamedFrom?: string): Promise<void> {
+    if (!this.repository) {
+      return;
+    }
+    const relPath = path.relative(this.repository.repositoryRoot, resolveRealpath(fileUri.fsPath));
+    if (relPath.startsWith("..")) {
+      // The graph is showing a different repository than the clicked file's.
+      return;
+    }
+    this.highlightedFilePaths = [
+      relPath.replace(/\\/g, "/"),
+      ...(renamedFrom ? [renamedFrom.replace(/\\/g, "/")] : []),
+    ];
+    await this.postFileHighlight();
+  }
+
+  private async postFileHighlight(operationId?: string): Promise<void> {
+    if (!this.panel || !this.repository || !this.highlightedFilePaths) {
+      return;
+    }
+    try {
+      const logLimit = vscode.workspace.getConfiguration("jjx").get<number>("logLimit") ?? DEFAULT_LOG_LIMIT;
+      const commitIds = await this.repository.logCommitIdsTouchingFiles(
+        getLogRevset(),
+        logLimit,
+        this.highlightedFilePaths,
+        operationId,
+      );
+      this.postMessageToWebview({ command: "highlightFileChanges", commitIds });
+    } catch (error) {
+      logger.warn(
+        `Failed to find the commits touching ${this.highlightedFilePaths.join(", ")}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
     }
   }
 
@@ -1121,6 +1168,7 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
         currentWorkspace,
       };
       this.postMessageToWebview(msg);
+      void this.postFileHighlight(operationId);
       try {
         await this.repository.getStatus(false, undefined, operationId);
       } catch {

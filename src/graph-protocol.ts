@@ -190,6 +190,7 @@ export type ExtensionToWebviewMessage =
       supportsTagTracking: boolean;
       currentWorkspace: string | undefined;
     }
+  | { command: "highlightFileChanges"; commitIds: string[] }
   | { command: "showStaleState" }
   | { command: "showJJNotFoundState" }
   | { command: "showNoRepoFoundState" }

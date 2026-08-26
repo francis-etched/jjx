@@ -97,6 +97,9 @@ export interface HighlightState {
 }
 export const connectedHighlight = signal<HighlightState | null>(null);
 
+/** Commit ids of the changes touching the file last clicked in the SCM view. */
+export const fileHighlight = signal<Set<string> | null>(null);
+
 export interface PendingGraphUpdate {
   changes: ChangeNode[];
   laneInfo: import("../../graph-protocol").ChangeIdGraph;

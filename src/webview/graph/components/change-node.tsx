@@ -40,6 +40,7 @@ import {
   currentChanges,
   connectedHighlight,
   selectionAnchorId,
+  fileHighlight,
 } from "../signals";
 import { computeSelection } from "../selection";
 import { SWIMLANE_WIDTH, CHANGE_ID_RIGHT_PADDING, rootChangeId } from "../types";
@@ -187,6 +188,7 @@ export function ChangeNodeRow({ change, index, nodeData, changeIdRef, compact, s
       currentWorkingCopy={change.branchType !== "~" && change.currentWorkingCopy}
       isElided={isElided}
       selected={isSelected}
+      fileMatch={change.branchType !== "~" && (fileHighlight.value?.has(change.commitId) ?? false)}
       modeClasses={modeClasses}
       data-change-id={changeUniqueId}
       onClick={handleClick}
@@ -231,6 +233,7 @@ function ChangeNodeClass({
   currentWorkingCopy,
   isElided,
   selected,
+  fileMatch,
   modeClasses,
   children,
   ...rest
@@ -239,6 +242,7 @@ function ChangeNodeClass({
   currentWorkingCopy: boolean;
   isElided: boolean;
   selected: ReadonlySignal<boolean>;
+  fileMatch: boolean;
   modeClasses: string;
   children?: preact.ComponentChildren;
 } & HTMLAttributes<HTMLDivElement>) {
@@ -249,6 +253,7 @@ function ChangeNodeClass({
         currentWorkingCopy && styles.workingCopy,
         isElided && styles.elidedNode,
         selected.value && styles.selected,
+        fileMatch && styles.fileMatch,
         dropTargetId.value === changeId && styles.dropTarget,
         modeClasses,
       )}

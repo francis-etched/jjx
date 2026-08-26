@@ -1079,6 +1079,25 @@ export class JJRepository {
     };
   }
 
+  /**
+   * Returns the full commit ids of the commits in `rev` whose diff touches any
+   * of the given repository-relative paths (forward slashes).
+   */
+  async logCommitIdsTouchingFiles(
+    rev: string,
+    limit: number,
+    relativePaths: string[],
+    operationId?: string,
+  ): Promise<string[]> {
+    const filesets = relativePaths.map((p) => filepathToFileset(p));
+    const output = await this.jjCommandRead(
+      ["log", "-r", rev, "-n", limit.toString(), "--no-graph", "-T", 'commit_id ++ "\\n"', "--", ...filesets],
+      undefined,
+      operationId,
+    );
+    return this.splitLines(output);
+  }
+
   async getDiffStats(
     changeId: FullChangeId,
   ): Promise<{ filesChanged: number; linesAdded: number; linesRemoved: number }> {

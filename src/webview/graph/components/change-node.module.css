@@ -17,6 +17,12 @@
   color: var(--vscode-list-activeSelectionForeground);
 }
 
+/* Subtle marker for commits touching the file last clicked in the SCM view. Selection and
+   hover backgrounds take precedence over it. */
+.changeNode.fileMatch:not(.selected):not(:hover) {
+  background-color: var(--vscode-editor-findMatchHighlightBackground, rgba(234, 92, 0, 0.33));
+}
+
 .changeNode.dropTarget {
   outline: 2px solid var(--vscode-focusBorder);
   outline-offset: 2px;

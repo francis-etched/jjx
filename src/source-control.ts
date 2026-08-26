@@ -1052,19 +1052,36 @@ function buildResourceStates(
         strikeThrough: uriFileStatus.type === "D",
         tooltip: path.basename(uriFileStatus.file),
       },
-      command: getResourceStateCommand(
-        uriFileStatus,
-        beforeUri,
-        afterUri,
-        toRev,
-        fileClickAction,
+      command: wrapWithFileHighlight(
+        getResourceStateCommand(
+          uriFileStatus,
+          beforeUri,
+          afterUri,
+          toRev,
+          fileClickAction,
+          workingCopyUri,
+          isConflicted,
+          changeId,
+          isWorkingCopyConflicted,
+        ),
         workingCopyUri,
-        isConflicted,
-        changeId,
-        isWorkingCopyConflicted,
+        fileStatus.renamedFrom,
       ),
     };
   });
+}
+
+/**
+ * Wraps a resource state's click command in `jj.scmFileClick`, which highlights the commits
+ * touching the file in the graph view before running the original command. A click is the only
+ * per-file "selection" signal the SCM API exposes.
+ */
+function wrapWithFileHighlight(command: vscode.Command, fileUri: vscode.Uri, renamedFrom?: string): vscode.Command {
+  return {
+    title: command.title,
+    command: "jj.scmFileClick",
+    arguments: [fileUri, { command: command.command, args: command.arguments ?? [] }, renamedFrom],
+  };
 }
 
 function buildUntrackedResourceStates(fileStatuses: FileStatus[]): vscode.SourceControlResourceState[] {
@@ -1122,15 +1139,19 @@ function buildComparisonDiffResourceStates(
         strikeThrough: fileStatus.type === "D",
         tooltip: path.basename(fileStatus.file),
       },
-      command: {
-        title: "Open",
-        command: "vscode.diff",
-        arguments: [
-          leftUri,
-          rightUri,
-          formatDiffTitle(fileStatus.renamedFrom, fileStatus.file, fromShort, toShort, mode),
-        ],
-      },
+      command: wrapWithFileHighlight(
+        {
+          title: "Open",
+          command: "vscode.diff",
+          arguments: [
+            leftUri,
+            rightUri,
+            formatDiffTitle(fileStatus.renamedFrom, fileStatus.file, fromShort, toShort, mode),
+          ],
+        },
+        fileUri,
+        fileStatus.renamedFrom,
+      ),
     };
   });
 }

@@ -29,6 +29,7 @@ import {
   pillContextMenu,
   remoteRefContextMenu,
   closeAllMenus,
+  fileHighlight,
 } from "./signals";
 import { Graph } from "./components/graph";
 import { ContextMenu } from "./components/context-menu";
@@ -98,6 +99,9 @@ export function App() {
             break;
           }
           applyGraphUpdate(message);
+          break;
+        case "highlightFileChanges":
+          fileHighlight.value = message.commitIds.length > 0 ? new Set(message.commitIds) : null;
           break;
         case "showStaleState":
           isStale.value = true;
