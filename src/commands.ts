@@ -920,17 +920,43 @@ export function registerInitCommands(state: ExtensionState): void {
       }
       const trackedFiles = await repo.fileList();
       const searched = new Set(graphWebview.getSearchedFiles().map((f) => f.path));
-      const candidates = trackedFiles.map((f) => f.replace(/\\/g, "/")).filter((f) => !searched.has(f));
-      const picked = await vscode.window.showQuickPick(candidates, {
+      const items = trackedFiles
+        .map((f) => f.replace(/\\/g, "/"))
+        .filter((f) => !searched.has(f))
+        .map((f) => ({
+          label: path.posix.basename(f),
+          description: path.posix.dirname(f) === "." ? undefined : path.posix.dirname(f),
+          path: f,
+        }));
+      const picked = await vscode.window.showQuickPick(items, {
         canPickMany: true,
-        placeHolder: "Select Files to Search",
+        placeHolder: "Search Files by Name",
         matchOnDescription: true,
       });
       if (picked && picked.length > 0) {
-        graphWebview.addSearchedFiles(picked);
+        graphWebview.addSearchedFiles(picked.map((item) => item.path));
       }
     },
     { errorPrefix: "Failed to add file to search" },
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "jj.searchedFiles.addResourceStates",
+      (...resourceStates: vscode.SourceControlResourceState[]) => {
+        const graphWebview = state.graphWebview;
+        const repo = graphWebview?.repository;
+        if (!graphWebview || !repo) {
+          return;
+        }
+        const relPaths = resourceStates
+          .map((rs) =>
+            repositoryRelativePath(repo.repositoryRoot, toRealPathSpelling(rs.resourceUri.fsPath)).replace(/\\/g, "/"),
+          )
+          .filter((p) => !p.startsWith(".."));
+        graphWebview.addSearchedFiles(relPaths);
+      },
+    ),
   );
 
   context.subscriptions.push(

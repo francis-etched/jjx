@@ -71,6 +71,11 @@
         "icon": "$(clear-all)"
       },
       {
+        "command": "jj.searchedFiles.addResourceStates",
+        "title": "Add to File Search",
+        "category": "Jujutsu"
+      },
+      {
         "command": "jj.refresh",
         "title": "Refresh",
         "category": "Jujutsu",
@@ -603,6 +608,11 @@
           "group": "1_modification@3"
         },
         {
+          "command": "jj.searchedFiles.addResourceStates",
+          "when": "scmProvider == jj && scmResourceGroup != untracked && jj.jjBinaryFound",
+          "group": "2_search@1"
+        },
+        {
           "command": "jj.copyPath",
           "when": "scmProvider == jj && scmResourceGroup != untracked && jj.jjBinaryFound",
           "group": "9_copypath@1"
@@ -698,6 +708,10 @@
       "commandPalette": [
         {
           "command": "jj.searchedFiles.remove",
+          "when": "false"
+        },
+        {
+          "command": "jj.searchedFiles.addResourceStates",
           "when": "false"
         },
         {
