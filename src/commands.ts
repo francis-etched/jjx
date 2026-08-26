@@ -910,21 +910,16 @@ export function registerInitCommands(state: ExtensionState): void {
       }
       const trackedFiles = await repo.fileList();
       const searched = new Set(graphWebview.getSearchedFiles().map((f) => f.path));
-      const items = trackedFiles
-        .map((f) => f.replace(/\\/g, "/"))
-        .filter((f) => !searched.has(f))
-        .map((f) => ({
-          label: path.posix.basename(f),
-          description: path.posix.dirname(f) === "." ? undefined : path.posix.dirname(f),
-          path: f,
-        }));
-      const picked = await vscode.window.showQuickPick(items, {
+      // The label is the full relative path: quick pick fuzzy matching runs per field, so a
+      // basename label with the directory in the description would not match queries spanning
+      // both (e.g. "system_test/BUILD" against host/system_test/BUILD).
+      const candidates = trackedFiles.map((f) => f.replace(/\\/g, "/")).filter((f) => !searched.has(f));
+      const picked = await vscode.window.showQuickPick(candidates, {
         canPickMany: true,
-        placeHolder: "Search Files by Name",
-        matchOnDescription: true,
+        placeHolder: "Search Files by Path",
       });
       if (picked && picked.length > 0) {
-        graphWebview.addSearchedFiles(picked.map((item) => item.path));
+        graphWebview.addSearchedFiles(picked);
       }
     },
     { errorPrefix: "Failed to add file to search" },
