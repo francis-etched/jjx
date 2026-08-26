@@ -30,6 +30,7 @@ import {
   remoteRefContextMenu,
   closeAllMenus,
   fileHighlight,
+  expandedFileChanges,
 } from "./signals";
 import { Graph } from "./components/graph";
 import { ContextMenu } from "./components/context-menu";
@@ -103,6 +104,12 @@ export function App() {
         case "highlightFileChanges":
           fileHighlight.value = message.commitIds.length > 0 ? new Set(message.commitIds) : null;
           break;
+        case "expandFileList": {
+          const newExpanded = new Set(expandedFileChanges.value);
+          newExpanded.add(message.changeId);
+          expandedFileChanges.value = newExpanded;
+          break;
+        }
         case "showStaleState":
           isStale.value = true;
           break;

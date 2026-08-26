@@ -11,6 +11,7 @@ import {
   showChangedFiles,
 } from "../signals";
 import { ChangeNodeRow } from "./change-node";
+import { NewCommitDropZone } from "./new-commit-drop-zone";
 import { NodeCircles } from "./node-circle";
 import { ConnectionLines } from "./connection-lines";
 import { useKeyboardShortcuts } from "../hooks/use-keyboard-shortcuts";
@@ -59,6 +60,7 @@ export function Graph() {
         <ConnectionLines />
         <NodeCircles />
       </svg>
+      <NewCommitDropZone />
       <div id="nodes">
         {changes.map((change, index) => {
           const nodeData = graph?.nodes[index];

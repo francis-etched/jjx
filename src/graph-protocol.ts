@@ -153,6 +153,13 @@ export type WebviewToExtensionMessage =
       path: string;
       renamedFrom?: string;
     }
+  | {
+      command: "newChangeWithFile";
+      changeId: FullChangeId;
+      parentChangeId: FullChangeId;
+      path: string;
+      renamedFrom?: string;
+    }
   | { command: "duplicateOnto"; changeIds: FullChangeId[]; targetChangeId: FullChangeId }
   | { command: "duplicateAfter"; changeIds: FullChangeId[]; targetChangeId: FullChangeId }
   | { command: "duplicateBefore"; changeIds: FullChangeId[]; targetChangeId: FullChangeId }
@@ -191,6 +198,7 @@ export type ExtensionToWebviewMessage =
       currentWorkspace: string | undefined;
     }
   | { command: "highlightFileChanges"; commitIds: string[] }
+  | { command: "expandFileList"; changeId: FullChangeId }
   | { command: "showStaleState" }
   | { command: "showJJNotFoundState" }
   | { command: "showNoRepoFoundState" }

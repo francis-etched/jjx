@@ -1,0 +1,26 @@
+.dropZone {
+  /* Constant height so the rows below never shift when a drag starts. */
+  height: 24px;
+  box-sizing: border-box;
+  margin: 2px 6px 2px 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed transparent;
+  border-radius: 3px;
+  font-size: 0.9em;
+  /* Inert space when nothing is being dragged. */
+  pointer-events: none;
+}
+
+.dropZone.active {
+  pointer-events: auto;
+  border-color: var(--vscode-descriptionForeground);
+  color: var(--vscode-descriptionForeground);
+}
+
+.dropZone.over {
+  border-color: var(--vscode-focusBorder);
+  color: var(--vscode-foreground);
+  background-color: var(--vscode-list-dropBackground, rgba(83, 89, 93, 0.5));
+}

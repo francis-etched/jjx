@@ -621,6 +621,31 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
           );
           break;
         }
+        case "newChangeWithFile": {
+          // For renames both the pre- and post-rename paths must be in the fileset so the
+          // deletion of the old path moves along with the addition of the new one.
+          const filepaths = [joinRepositoryPath(repo.repositoryRoot, message.path)];
+          if (message.renamedFrom) {
+            filepaths.push(joinRepositoryPath(repo.repositoryRoot, message.renamedFrom));
+          }
+          await this.withRefresh("create new change from file", async () => {
+            await repo.new(undefined, [message.parentChangeId]);
+            await repo.squashRetryImmutable({
+              fromRevs: [message.changeId],
+              toRev: "@",
+              filepaths,
+            });
+          });
+          try {
+            // The new change is the working copy; fetch a fresh status (the cache
+            // predates the operation) so the webview can expand its file list.
+            const status = await repo.getStatus(false);
+            this.postMessageToWebview({ command: "expandFileList", changeId: status.workingCopy.changeId.changeId });
+          } catch {
+            // The expansion is cosmetic; the change was still created.
+          }
+          break;
+        }
         case "duplicateOnto":
         case "duplicateAfter":
         case "duplicateBefore": {
