@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { AsyncFzf } from "fzf";
+import { AsyncFzf, asyncExtendedMatch } from "fzf";
 
 const MAX_RESULTS = 200;
 
@@ -12,9 +12,15 @@ const MAX_RESULTS = 200;
  * Picked files stay picked (and visible) while the query changes.
  */
 export function pickFilesByPath(paths: string[]): Promise<string[] | undefined> {
+  // Extended match enables fzf's query syntax: space-separated terms are ANDed
+  // (e.g. "system_test BUILD"), plus 'exact, ^prefix, suffix$, and !negation.
   // The v1 matcher scales linearly with the pattern length and keeps large
   // repositories responsive; v2 gives slightly better match positions.
-  const fzf = new AsyncFzf(paths, { limit: MAX_RESULTS, fuzzy: paths.length > 20000 ? "v1" : "v2" });
+  const fzf = new AsyncFzf(paths, {
+    limit: MAX_RESULTS,
+    fuzzy: paths.length > 20000 ? "v1" : "v2",
+    match: asyncExtendedMatch,
+  });
   const quickPick = vscode.window.createQuickPick();
   quickPick.canSelectMany = true;
   quickPick.placeholder = "Search Files by Path";
