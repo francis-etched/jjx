@@ -944,6 +944,12 @@
           "scope": "resource",
           "minimum": 0
         },
+        "jjx.logRevset": {
+          "type": "string",
+          "default": "connected(present(@) | ancestors(immutable_heads()..) | trunk())",
+          "description": "Revset shown in the graph view. To customize, define a revset alias in your jj config and reference it here; an empty value falls back to the default.",
+          "scope": "resource"
+        },
         "jjx.logLimit": {
           "type": "number",
           "default": 500,

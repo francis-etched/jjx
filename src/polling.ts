@@ -207,6 +207,7 @@ export function createPolling(
       if (
         e.affectsConfiguration("jjx.graphStyle") ||
         e.affectsConfiguration("jjx.logLimit") ||
+        e.affectsConfiguration("jjx.logRevset") ||
         e.affectsConfiguration("jjx.elideImmutableCommits") ||
         e.affectsConfiguration("jjx.elidedVisibleImmutableParents") ||
         e.affectsConfiguration("jjx.showTooltips") ||

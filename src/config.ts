@@ -82,8 +82,11 @@ export async function getJJPath(
   throw new Error(`jj CLI not found in PATH nor in common locations.`);
 }
 
+const DEFAULT_LOG_REVSET = `connected(present(@) | ancestors(immutable_heads()..) | trunk())`;
+
 export function getLogRevset(): string {
-  return `connected(present(@) | ancestors(immutable_heads()..) | trunk())`;
+  const configured = vscode.workspace.getConfiguration("jjx").get<string>("logRevset")?.trim();
+  return configured || DEFAULT_LOG_REVSET;
 }
 
 export function getElidedVisibleImmutableParents(repositoryRoot: string): number {
