@@ -33,13 +33,43 @@
           "when": "jj.reposExist"
         },
         {
+          "id": "jjSearchedFiles",
+          "name": "JJ File Search",
+          "when": "jj.reposExist",
+          "visibility": "collapsed"
+        },
+        {
           "id": "jjOperationLog",
           "name": "JJ Operation Log",
           "when": "jj.reposExist"
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "jjSearchedFiles",
+        "contents": "Commits touching the searched files are highlighted in the JJ Graph. Click a file in the Source Control view or add files by path.\n[Add Files](command:jj.searchedFiles.add)"
+      }
+    ],
     "commands": [
+      {
+        "command": "jj.searchedFiles.add",
+        "title": "Add Files to Search",
+        "category": "Jujutsu",
+        "icon": "$(add)"
+      },
+      {
+        "command": "jj.searchedFiles.remove",
+        "title": "Remove from Search",
+        "category": "Jujutsu",
+        "icon": "$(close)"
+      },
+      {
+        "command": "jj.searchedFiles.clear",
+        "title": "Clear Searched Files",
+        "category": "Jujutsu",
+        "icon": "$(clear-all)"
+      },
       {
         "command": "jj.refresh",
         "title": "Refresh",
@@ -403,6 +433,16 @@
           "group": "navigation@0"
         },
         {
+          "command": "jj.searchedFiles.add",
+          "when": "view == jjSearchedFiles",
+          "group": "navigation@1"
+        },
+        {
+          "command": "jj.searchedFiles.clear",
+          "when": "view == jjSearchedFiles",
+          "group": "navigation@2"
+        },
+        {
           "command": "jj.gitFetch",
           "when": "view == jjGraphWebview && !jj.fetching",
           "group": "navigation@1"
@@ -466,6 +506,11 @@
         }
       ],
       "view/item/context": [
+        {
+          "command": "jj.searchedFiles.remove",
+          "when": "view == jjSearchedFiles && viewItem == searchedFile",
+          "group": "inline"
+        },
         {
           "command": "jj.operationRevert",
           "when": "view == jjOperationLog",
@@ -651,6 +696,10 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "jj.searchedFiles.remove",
+          "when": "false"
+        },
         {
           "command": "jj.openAllChanges",
           "when": "false"

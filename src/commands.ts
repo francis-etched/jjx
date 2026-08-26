@@ -6,6 +6,7 @@ import { repositoryRelativePath, resolveRepositoryPath, toRealPathSpelling, toWo
 import type { ExtensionState } from "./extension-state";
 import type { ChangeId, FileStatus, FullChangeId } from "./types";
 import { OperationTreeItem } from "./operation-log-tree-view";
+import type { SearchedFileTreeItem } from "./searched-files-tree-view";
 import { getParams, isComparisonDiffUri, resolveRev, toJJUri, type JJUriParams } from "./uri";
 import {
   computeLineChanges,
@@ -405,7 +406,7 @@ export function registerPreInitCommands(state: ExtensionState): void {
     context,
     "jj.scmFileClick",
     async (fileUri: vscode.Uri, inner: { command: string; args: unknown[] }, renamedFrom?: string) => {
-      void state.graphWebview?.highlightFile(fileUri, renamedFrom);
+      state.graphWebview?.setSearchedFileFromClick(fileUri, renamedFrom);
       await vscode.commands.executeCommand(inner.command, ...inner.args);
     },
     { errorPrefix: "Failed to open file" },
@@ -906,6 +907,42 @@ export function registerInitCommands(state: ExtensionState): void {
       await scm.setDiffMode("diff");
     },
     { errorPrefix: "Failed to switch to regular diff" },
+  );
+
+  registerCommand(
+    context,
+    "jj.searchedFiles.add",
+    async () => {
+      const graphWebview = state.graphWebview;
+      const repo = graphWebview?.repository;
+      if (!graphWebview || !repo) {
+        return;
+      }
+      const trackedFiles = await repo.fileList();
+      const searched = new Set(graphWebview.getSearchedFiles().map((f) => f.path));
+      const candidates = trackedFiles.map((f) => f.replace(/\\/g, "/")).filter((f) => !searched.has(f));
+      const picked = await vscode.window.showQuickPick(candidates, {
+        canPickMany: true,
+        placeHolder: "Select Files to Search",
+        matchOnDescription: true,
+      });
+      if (picked && picked.length > 0) {
+        graphWebview.addSearchedFiles(picked);
+      }
+    },
+    { errorPrefix: "Failed to add file to search" },
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("jj.searchedFiles.remove", (item: SearchedFileTreeItem) => {
+      state.graphWebview?.removeSearchedFile(item.relPath);
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("jj.searchedFiles.clear", () => {
+      state.graphWebview?.clearSearchedFiles();
+    }),
   );
 
   registerCommand(

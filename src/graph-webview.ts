@@ -45,6 +45,14 @@ export interface GraphSelection {
   currentWorkingCopy: boolean;
 }
 
+/** A file whose touching commits are highlighted in the graph. */
+export interface SearchedFile {
+  /** Repository-relative path with forward slashes. */
+  path: string;
+  /** Pre-rename path, so commits before the rename are highlighted too. */
+  renamedFrom?: string;
+}
+
 type Message = WebviewToExtensionMessage;
 
 export class JJGraphWebview implements vscode.WebviewViewProvider {
@@ -58,9 +66,13 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
   private currentChanges: ChangeNode[] = [];
   private changesById = new Map<FullChangeId, RegularChangeNode>();
   private elideOverride: boolean | null = null;
-  // Repository-relative paths (forward slashes) of the last file clicked in the
-  // SCM view, so the commits touching it stay highlighted across refreshes.
-  private highlightedFilePaths: string[] | undefined;
+  // Files whose touching commits are highlighted in the graph. Clicking a file in the SCM view
+  // replaces the list; the File Search view adds/removes entries. The highlight is recomputed on
+  // every graph refresh so it stays accurate.
+  private searchedFiles: SearchedFile[] = [];
+
+  private _onDidChangeSearchedFiles = new vscode.EventEmitter<void>();
+  readonly onDidChangeSearchedFiles: vscode.Event<void> = this._onDidChangeSearchedFiles.event;
   private readonly splitWebview: SplitWebview;
   private lastFiredSelection: GraphSelection[] = [];
 
@@ -851,17 +863,20 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
       this.panel.title = `JJ Graph (${path.basename(this.repository.repositoryRoot)})`;
     }
     if (prevRoot !== repo.repositoryRoot) {
-      this.highlightedFilePaths = undefined;
+      this.updateSearchedFiles([]);
       await this.refresh();
     }
   }
 
+  public getSearchedFiles(): readonly SearchedFile[] {
+    return this.searchedFiles;
+  }
+
   /**
-   * Highlights the graph nodes of the commits that touch the given file.
-   * Called when a file is clicked in the SCM view; the highlight is recomputed
-   * on every graph refresh so it stays accurate until another file is clicked.
+   * Replaces the searched files with the file clicked in the SCM view, so the
+   * commits touching it are highlighted in the graph.
    */
-  public async highlightFile(fileUri: vscode.Uri, renamedFrom?: string): Promise<void> {
+  public setSearchedFileFromClick(fileUri: vscode.Uri, renamedFrom?: string): void {
     if (!this.repository) {
       return;
     }
@@ -870,29 +885,63 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
       // The graph is showing a different repository than the clicked file's.
       return;
     }
-    this.highlightedFilePaths = [
-      relPath.replace(/\\/g, "/"),
-      ...(renamedFrom ? [renamedFrom.replace(/\\/g, "/")] : []),
-    ];
-    await this.postFileHighlight();
+    this.updateSearchedFiles([
+      {
+        path: relPath.replace(/\\/g, "/"),
+        ...(renamedFrom ? { renamedFrom: renamedFrom.replace(/\\/g, "/") } : {}),
+      },
+    ]);
+  }
+
+  /** Adds files (repository-relative, forward slashes) to the searched files. */
+  public addSearchedFiles(relPaths: string[]): void {
+    const existing = new Set(this.searchedFiles.map((f) => f.path));
+    const added = relPaths.filter((p) => !existing.has(p)).map((p) => ({ path: p }));
+    if (added.length > 0) {
+      this.updateSearchedFiles([...this.searchedFiles, ...added]);
+    }
+  }
+
+  public removeSearchedFile(relPath: string): void {
+    const remaining = this.searchedFiles.filter((f) => f.path !== relPath);
+    if (remaining.length !== this.searchedFiles.length) {
+      this.updateSearchedFiles(remaining);
+    }
+  }
+
+  public clearSearchedFiles(): void {
+    if (this.searchedFiles.length > 0) {
+      this.updateSearchedFiles([]);
+    }
+  }
+
+  private updateSearchedFiles(files: SearchedFile[]): void {
+    this.searchedFiles = files;
+    this._onDidChangeSearchedFiles.fire();
+    void this.postFileHighlight();
   }
 
   private async postFileHighlight(operationId?: string): Promise<void> {
-    if (!this.panel || !this.repository || !this.highlightedFilePaths) {
+    if (!this.panel || !this.repository) {
       return;
     }
+    if (this.searchedFiles.length === 0) {
+      this.postMessageToWebview({ command: "highlightFileChanges", commitIds: [] });
+      return;
+    }
+    const relativePaths = this.searchedFiles.flatMap((f) => [f.path, ...(f.renamedFrom ? [f.renamedFrom] : [])]);
     try {
       const logLimit = vscode.workspace.getConfiguration("jjx").get<number>("logLimit") ?? DEFAULT_LOG_LIMIT;
       const commitIds = await this.repository.logCommitIdsTouchingFiles(
         getLogRevset(),
         logLimit,
-        this.highlightedFilePaths,
+        relativePaths,
         operationId,
       );
       this.postMessageToWebview({ command: "highlightFileChanges", commitIds });
     } catch (error) {
       logger.warn(
-        `Failed to find the commits touching ${this.highlightedFilePaths.join(", ")}: ${
+        `Failed to find the commits touching ${relativePaths.join(", ")}: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );

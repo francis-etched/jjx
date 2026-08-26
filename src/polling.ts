@@ -4,6 +4,7 @@ import { createThrottledAsyncFn } from "./utils";
 import { OperationLogManager, OperationLogTreeDataProvider } from "./operation-log-tree-view";
 import { JJGraphWebview } from "./graph-webview";
 import { DetailsWebview } from "./details-webview";
+import { SearchedFilesManager } from "./searched-files-tree-view";
 import type { ExtensionState } from "./extension-state";
 import type { ForceRefresh } from "./source-control";
 
@@ -69,6 +70,8 @@ export function initInfrastructure(state: ExtensionState) {
       }
     }),
   );
+
+  context.subscriptions.push(new SearchedFilesManager(graphWebview));
 
   const operationLogTreeDataProvider = new OperationLogTreeDataProvider(initialSelectedRepo);
   const operationLogManager = new OperationLogManager(operationLogTreeDataProvider);
