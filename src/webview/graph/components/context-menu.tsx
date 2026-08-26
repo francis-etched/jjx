@@ -9,6 +9,7 @@ export function ContextMenu() {
   }
 
   const { change } = state;
+  const isMultiSelected = selectedNodes.value.size > 1 && selectedNodes.value.has(change.id.changeId);
   const isImmutable = change.branchType === "◆";
   const immutableIcon = isImmutable ? <ImmutableIcon /> : null;
   const hasImmutableSelected =
@@ -35,13 +36,18 @@ export function ContextMenu() {
       )}
       <MenuItem
         action="newChild"
-        title="Create a New Child Change"
+        title={
+          isMultiSelected ? "Create a New Change with All Selected Changes as Parents" : "Create a New Child Change"
+        }
         onClick={() => {
-          postMessage({ command: "newChildChange", changeIds: [change.id.changeId] });
+          postMessage({
+            command: "newChildChange",
+            changeIds: isMultiSelected ? Array.from(selectedNodes.value) : [change.id.changeId],
+          });
           contextMenu.value = null;
         }}
       >
-        New Child
+        {isMultiSelected ? "New Child of All Selected" : "New Child"}
       </MenuItem>
       <MenuItem
         action="openInNewWorkspace"
