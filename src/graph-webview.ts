@@ -713,8 +713,8 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
             );
             const afterUri = useWorkingCopyRight ? fileUri : toJJUri(fileUri, afterParams);
             const title = useWorkingCopyRight
-              ? formatDiffTitle(renamedFrom, path.basename(relPath), `${toRev} Parent`, formatWorkingCopyTitle())
-              : formatDiffTitle(renamedFrom, path.basename(relPath), undefined, toRev);
+              ? formatDiffTitle(renamedFrom, path.basename(relPath), `${toRev} Parent`, formatWorkingCopyTitle(), "diff", status)
+              : formatDiffTitle(renamedFrom, path.basename(relPath), undefined, toRev, "diff", status);
             await vscode.commands.executeCommand("vscode.diff", beforeUri, afterUri, title);
           } catch (error: unknown) {
             showErrorMessage("Failed to open diff", error);

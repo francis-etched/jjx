@@ -292,8 +292,15 @@ async function openFileDiff(repo: JJRepository, filePath: string, changeId: Full
     beforeUri,
     afterUri,
     useWorkingCopyRight
-      ? formatDiffTitle(fileStatus?.renamedFrom, path.basename(filePath), `${toRev} Parent`, formatWorkingCopyTitle())
-      : formatDiffTitle(fileStatus?.renamedFrom, path.basename(filePath), undefined, toRev),
+      ? formatDiffTitle(
+          fileStatus?.renamedFrom,
+          path.basename(filePath),
+          `${toRev} Parent`,
+          formatWorkingCopyTitle(),
+          "diff",
+          fileStatus?.type,
+        )
+      : formatDiffTitle(fileStatus?.renamedFrom, path.basename(filePath), undefined, toRev, "diff", fileStatus?.type),
   );
 }
 

@@ -1128,7 +1128,7 @@ function buildComparisonDiffResourceStates(
         arguments: [
           leftUri,
           rightUri,
-          formatDiffTitle(fileStatus.renamedFrom, fileStatus.file, fromShort, toShort, mode),
+          formatDiffTitle(fileStatus.renamedFrom, fileStatus.file, fromShort, toShort, mode, fileStatus.type),
         ],
       },
     };
@@ -1177,7 +1177,7 @@ function computeFallbackCommand(
         arguments: [
           beforeUri,
           toJJUri(vscode.Uri.file(fileStatus.path), { deleted: true }),
-          formatDiffTitle(fileStatus.renamedFrom, fileStatus.file, undefined, toRev),
+          formatDiffTitle(fileStatus.renamedFrom, fileStatus.file, undefined, toRev, "diff", fileStatus.type),
         ],
       };
     }
@@ -1204,6 +1204,10 @@ function computeFallbackCommand(
   return {
     title: "Open",
     command: "vscode.diff",
-    arguments: [beforeUri, afterUri, formatDiffTitle(fileStatus.renamedFrom, fileStatus.file, undefined, toRev)],
+    arguments: [
+      beforeUri,
+      afterUri,
+      formatDiffTitle(fileStatus.renamedFrom, fileStatus.file, undefined, toRev, "diff", fileStatus.type),
+    ],
   };
 }

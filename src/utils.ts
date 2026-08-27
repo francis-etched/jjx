@@ -39,17 +39,29 @@ export function filepathToRootFileset(filepath: string): string {
   return `root:"${escaped}"`;
 }
 
+/**
+ * The editor tab title for a diff.
+ *
+ * The file's fate within the change is spelled out so the tab alone says what
+ * happened to it: a rename is shown as `old.ts → new.ts`, and an addition or
+ * deletion is labelled (`Added`/`Deleted`) since those diffs otherwise look
+ * like an ordinary modification against an empty side.
+ *
+ * @param from the left-hand revision, or undefined for the change's parent
+ */
 export function formatDiffTitle(
   renamedFrom: string | undefined,
   baseName: string,
   from: string | undefined,
   to: string,
   mode: "diff" | "interdiff" = "diff",
+  status?: FileStatusType,
 ): string {
   const label = mode === "interdiff" ? "Interdiff " : "";
   const fromName = renamedFrom ? basename(renamedFrom) : undefined;
-  const diffPart = from === undefined ? `${label}Parent → ${to}` : `${label}${from} → ${to}`;
-  return (fromName ? `${fromName} → ` : "") + `${baseName} (${diffPart})`;
+  const revPart = from === undefined ? `${label}Parent → ${to}` : `${label}${from} → ${to}`;
+  const statusPart = status === "A" ? "Added, " : status === "D" ? "Deleted, " : "";
+  return (fromName ? `${fromName} → ` : "") + `${baseName} (${statusPart}${revPart})`;
 }
 
 /**

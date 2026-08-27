@@ -97,6 +97,38 @@ describe("formatDiffTitle Test Suite", () => {
     assert.equal(formatDiffTitle("old.ts", "new.ts", undefined, "xy1234"), "old.ts → new.ts (Parent → xy1234)");
   });
 
+  it("labels an added file so the empty left side is explained", () => {
+    assert.equal(
+      formatDiffTitle(undefined, "new.ts", undefined, "xy1234", "diff", "A"),
+      "new.ts (Added, Parent → xy1234)",
+    );
+  });
+
+  it("labels a deleted file so the empty right side is explained", () => {
+    assert.equal(
+      formatDiffTitle(undefined, "old.ts", undefined, "xy1234", "diff", "D"),
+      "old.ts (Deleted, Parent → xy1234)",
+    );
+  });
+
+  it("leaves a modified file unlabelled", () => {
+    assert.equal(formatDiffTitle(undefined, "new.ts", undefined, "xy1234", "diff", "M"), "new.ts (Parent → xy1234)");
+  });
+
+  it("labels an added file in an interdiff between two revs", () => {
+    assert.equal(
+      formatDiffTitle(undefined, "new.ts", "rev-a", "rev-b", "interdiff", "A"),
+      "new.ts (Added, Interdiff rev-a → rev-b)",
+    );
+  });
+
+  it("shows the rename arrow rather than a status label for a rename", () => {
+    assert.equal(
+      formatDiffTitle("src/foo/old.ts", "new.ts", undefined, "xy1234", "diff", "R"),
+      "old.ts → new.ts (Parent → xy1234)",
+    );
+  });
+
   it("supports a custom label such as Interdiff", () => {
     assert.equal(
       formatDiffTitle(undefined, "new.ts", "rev-a", "rev-b", "interdiff"),

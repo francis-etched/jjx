@@ -13,6 +13,10 @@
   by default; clicking the change id toggles it open and closed
 - **Abandon empty changes without confirmation** - Abandoning an empty, undescribed change with one parent and at most
   one child no longer asks for confirmation, since nothing is lost and no rebase needs reasoning about
+- **Added and deleted files are labelled in diff tab titles** - A diff for a file the change created or removed now
+  reads `foo.ts (Added, Parent → xyz)` / `foo.ts (Deleted, Parent → xyz)`, so an empty side is no longer mistaken for a
+  modification that emptied the file. This applies to diffs opened from the blame hover, the SCM view, and the graph's
+  per-commit file lists, matching how renames already show as `old.ts → new.ts`
 
 ## 1.16.1
 

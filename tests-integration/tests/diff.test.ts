@@ -62,6 +62,9 @@ test("shows diff when clicking modified files", async ({ graphFrame, testRepo, w
   await expect(deletedFirstItems).toHaveCount(1);
   await deletedFirstItems.first().click();
   await validateDiff("Deleted first", "");
+  // The tab says the file was deleted, so the empty right side isn't mistaken
+  // for a modification that emptied the file.
+  await expect(workbox.getByRole("tab", { name: /deleted-first\.txt \(Deleted, / })).toBeVisible();
 
   const deletedSecondItems = scmView.getByRole("treeitem", { name: /deleted-second\.txt/ });
   await expect(deletedSecondItems).toHaveCount(1);
@@ -73,6 +76,7 @@ test("shows diff when clicking modified files", async ({ graphFrame, testRepo, w
   await expect(addedFirstItems).toHaveCount(1);
   await addedFirstItems.first().click();
   await validateDiff("", "Added first");
+  await expect(workbox.getByRole("tab", { name: /added-first\.txt \(Added, / })).toBeVisible();
 
   const addedSecondItems = scmView.getByRole("treeitem", { name: /added-second\.txt/ });
   await expect(addedSecondItems).toHaveCount(1);
