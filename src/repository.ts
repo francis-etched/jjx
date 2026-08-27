@@ -137,6 +137,13 @@ export class JJRepository {
   private showMemoOperationId: string | undefined;
 
   /**
+   * Short-lived memo for getStatus() results (see {@link JJRepository.getStatus}).
+   * Only valid for {@link statusMemoOperationId}.
+   */
+  private statusMemo: Promise<RepositoryStatus> | undefined;
+  private statusMemoOperationId: string | undefined;
+
+  /**
    * Cancellation sources for in-flight remote ref operations,
    * keyed by `<refType>:<name>`.
    */
@@ -277,6 +284,7 @@ export class JJRepository {
     options?: { token?: vscode.CancellationToken; timeout?: number; env?: Record<string, string> },
   ) {
     this.showMemo.clear();
+    this.statusMemo = undefined;
     return handleJJCommand(
       this.spawnJJ(args, { timeout: options?.timeout, cwd: this.repositoryRoot, env: options?.env }),
       options?.token,
@@ -376,11 +384,45 @@ export class JJRepository {
     return operationId;
   }
 
+  /**
+   * Returns the working copy status, memoized per operation id: several views refresh off the
+   * same operation, and each `jj log -r @` costs a subprocess spawn.
+   *
+   * `useCache` returns the last status regardless of operation id, for callers that only need a
+   * rough answer (e.g. which change is the working copy) and can tolerate staleness.
+   */
   async getStatus(useCache = false, token?: vscode.CancellationToken, operationId?: string): Promise<RepositoryStatus> {
     if (useCache && this.statusCache) {
       return this.statusCache;
     }
 
+    const memoOperationId = operationId ?? this.lastKnownOperationId;
+    if (!memoOperationId) {
+      // No operation id is known yet, so the result cannot be pinned (and safely memoized).
+      return this.getStatusUncached(token, operationId);
+    }
+    if (this.statusMemoOperationId !== memoOperationId) {
+      this.statusMemo = undefined;
+      this.statusMemoOperationId = memoOperationId;
+    }
+    if (this.statusMemo) {
+      return this.statusMemo;
+    }
+    const promise = this.getStatusUncached(token, operationId).catch((error: unknown) => {
+      if (this.statusMemoOperationId === memoOperationId) {
+        this.statusMemo = undefined;
+      }
+      throw error;
+    });
+    this.statusMemo = promise;
+    return promise;
+  }
+
+  /**
+   * Like {@link JJRepository.getStatus}, but always spawns `jj log` without consulting (or
+   * populating) the memo.
+   */
+  private async getStatusUncached(token?: vscode.CancellationToken, operationId?: string): Promise<RepositoryStatus> {
     const output = (
       await this.jjCommandRead(["log", "-r", "@", "-T", STATUS_TEMPLATE, "--no-graph"], { token }, operationId)
     ).toString();

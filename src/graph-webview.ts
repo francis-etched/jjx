@@ -63,6 +63,8 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
   public selectedNodes: Set<FullChangeId> = new Set();
   private currentChanges: ChangeNode[] = [];
   private changesById = new Map<FullChangeId, RegularChangeNode>();
+  /** Operation id of the graph currently rendered, used to skip duplicate refreshes. */
+  private lastRenderedOperationId: string | undefined;
   private elideOverride: boolean | null = null;
   // Files whose touching commits are highlighted in the graph, managed via the File Search view
   // and the SCM context menu. The highlight is recomputed on every graph refresh so it stays
@@ -98,6 +100,8 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
 
   public async resolveWebviewView(webviewView: vscode.WebviewView): Promise<void> {
     this.panel = webviewView;
+    // A fresh view has nothing rendered, so never let the dedupe guard suppress the first refresh.
+    this.lastRenderedOperationId = undefined;
     this.panel.title = this.repository ? `JJ Graph (${path.basename(this.repository.repositoryRoot)})` : "JJ Graph";
 
     webviewView.webview.options = {
@@ -882,6 +886,10 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
   public async setSelectedRepository(repo: JJRepository) {
     const prevRoot = this.repository?.repositoryRoot;
     this.repository = repo;
+    if (prevRoot !== repo.repositoryRoot) {
+      // Operation ids are per repository, so the previous one says nothing about what is rendered.
+      this.lastRenderedOperationId = undefined;
+    }
     if (this.panel) {
       this.panel.title = `JJ Graph (${path.basename(this.repository.repositoryRoot)})`;
     }
@@ -1097,6 +1105,19 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
       return;
     }
 
+    // A graph mutation refreshes eagerly and also bumps the operation id, which the poller
+    // reports back as another refresh for the same operation. Skip that second pass — but only
+    // when the caller named the operation: a refresh with no operation id is a view change
+    // (eliding, configuration) that must re-render regardless.
+    //
+    // The file highlight still has to be recomputed: the searched files can change without the
+    // operation changing (highlighting from the SCM view), and the poller's repeat refresh is
+    // what carries that update to the webview.
+    if (providedOperationId !== undefined && providedOperationId === this.lastRenderedOperationId) {
+      await this.postFileHighlight(providedOperationId);
+      return;
+    }
+
     try {
       const operationId = providedOperationId ?? (await this.repository.getLatestOperationId(false));
       this.repository.resetAutoUpdateStaleAttempted();
@@ -1132,54 +1153,42 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
         changes.filter((c): c is RegularChangeNode => c.branchType !== "~").map((c) => [c.id.changeId, c]),
       );
 
-      const unsyncedBookmarks = new Set<string>();
+      const hasUnsyncedBookmarks = changes.some(
+        (change) => change.branchType !== "~" && change.localBookmarks.some((b) => !b.synced && !b.conflict),
+      );
+      const supportsTagTracking = this.repository.supportsTagTracking();
+      const hasUnsyncedTags =
+        supportsTagTracking &&
+        changes.some((change) => change.branchType !== "~" && change.localTags.some((t) => !t.synced && !t.conflict));
+
+      // These three reads are independent, so run them concurrently rather than paying for
+      // three sequential jj round-trips on every refresh.
+      const [bookmarksWithPushTargets, tagsWithPushTargets, currentWorkspace] = await Promise.all([
+        hasUnsyncedBookmarks ? this.repository.getBookmarksWithUnsyncedNonGitRemotes(operationId) : undefined,
+        hasUnsyncedTags ? this.repository.getTagsWithUnsyncedNonGitRemotes(operationId) : undefined,
+        this.repository.getCurrentWorkspaceName(operationId).catch((error: unknown) => {
+          logger.warn(
+            `Failed to determine the current workspace: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          return undefined;
+        }),
+      ]);
+
       for (const change of changes) {
         if (change.branchType === "~") {
           continue;
         }
-        for (const b of change.localBookmarks) {
-          if (!b.synced && !b.conflict) {
-            unsyncedBookmarks.add(b.name);
-          }
-        }
-      }
-      if (unsyncedBookmarks.size > 0) {
-        const bookmarksWithPushTargets = await this.repository.getBookmarksWithUnsyncedNonGitRemotes(operationId);
-        for (const change of changes) {
-          if (change.branchType === "~") {
-            continue;
-          }
+        if (bookmarksWithPushTargets) {
           for (const b of change.localBookmarks) {
             if (!b.synced && !b.conflict) {
               b.showPushButton = bookmarksWithPushTargets.has(b.name);
             }
           }
         }
-      }
-
-      const supportsTagTracking = this.repository.supportsTagTracking();
-      if (supportsTagTracking) {
-        const unsyncedTags = new Set<string>();
-        for (const change of changes) {
-          if (change.branchType === "~") {
-            continue;
-          }
+        if (tagsWithPushTargets) {
           for (const t of change.localTags) {
             if (!t.synced && !t.conflict) {
-              unsyncedTags.add(t.name);
-            }
-          }
-        }
-        if (unsyncedTags.size > 0) {
-          const tagsWithPushTargets = await this.repository.getTagsWithUnsyncedNonGitRemotes(operationId);
-          for (const change of changes) {
-            if (change.branchType === "~") {
-              continue;
-            }
-            for (const t of change.localTags) {
-              if (!t.synced && !t.conflict) {
-                t.showPushButton = tagsWithPushTargets.has(t.name);
-              }
+              t.showPushButton = tagsWithPushTargets.has(t.name);
             }
           }
         }
@@ -1192,15 +1201,6 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
       // the SCM view and the Details view must follow.
       this.fireSelection(this.resolveSelection(Array.from(this.selectedNodes)));
       const changeDoubleClickAction = config.get<string>("changeDoubleClickAction") || "edit";
-
-      let currentWorkspace: string | undefined;
-      try {
-        currentWorkspace = await this.repository.getCurrentWorkspaceName(operationId);
-      } catch (error: unknown) {
-        logger.warn(
-          `Failed to determine the current workspace: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      }
 
       const laneInfo = assignLanes(entriesWithSynthetics);
 
@@ -1219,6 +1219,7 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
         currentWorkspace,
       };
       this.postMessageToWebview(msg);
+      this.lastRenderedOperationId = operationId;
       void this.postFileHighlight(operationId);
       try {
         await this.repository.getStatus(false, undefined, operationId);
