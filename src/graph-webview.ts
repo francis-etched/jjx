@@ -710,15 +710,26 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
           try {
             const node = this.findRegularChange(changeId);
             const toRev = node ? formatChangeIdShort(node.id) : await repo.resolveRevSuffix(changeId);
-            const useWorkingCopyRight = shouldOpenWorkingCopyRightSide(
-              changeId,
-              status,
-              await repo.isFileUnchangedInWorkingCopy(changeId, absPath),
-            );
+            const isWorkingCopy = node?.currentWorkingCopy ?? false;
+            const useWorkingCopyRight = isWorkingCopy
+              ? status !== "D"
+              : shouldOpenWorkingCopyRightSide(
+                  changeId,
+                  status,
+                  await repo.isFileUnchangedInWorkingCopy(changeId, absPath),
+                );
             const afterUri = useWorkingCopyRight ? fileUri : toJJUri(fileUri, afterParams);
-            const title = useWorkingCopyRight
-              ? formatDiffTitle(renamedFrom, path.basename(relPath), `${toRev} Parent`, formatWorkingCopyTitle(), "diff", status)
-              : formatDiffTitle(renamedFrom, path.basename(relPath), undefined, toRev, "diff", status);
+            const title =
+              useWorkingCopyRight && !isWorkingCopy
+                ? formatDiffTitle(
+                    renamedFrom,
+                    path.basename(relPath),
+                    `${toRev} Parent`,
+                    formatWorkingCopyTitle(),
+                    "diff",
+                    status,
+                  )
+                : formatDiffTitle(renamedFrom, path.basename(relPath), undefined, toRev, "diff", status);
             await vscode.commands.executeCommand("vscode.diff", beforeUri, afterUri, title);
           } catch (error: unknown) {
             showErrorMessage("Failed to open diff", error);
