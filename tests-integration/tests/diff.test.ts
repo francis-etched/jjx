@@ -236,3 +236,24 @@ test.describe("with the at-revision file click action", () => {
     expect(parent.change_id.startsWith(shortChangeId)).toBe(true);
   });
 });
+
+test("Option+clicking a graph revision opens all its changes in a multi-diff editor", async ({
+  graphFrame,
+  testRepo,
+  workbox,
+}) => {
+  await testRepo.commitFile("a.txt", "ALPHA OLD", "Initial commit");
+  await testRepo.writeFile("a.txt", "ALPHA NEW");
+  await testRepo.writeFile("b.txt", "BRAVO NEW");
+  await testRepo.commit("Two files");
+
+  const node = graphFrame.locator("#nodes > div").filter({ hasText: "Two files" });
+  await expect(node).toBeVisible();
+  await node.click({ modifiers: ["Alt"] });
+
+  await expect(workbox.getByRole("tab", { name: /Two files/ })).toBeVisible();
+  const multiDiffEditor = workbox.locator(".multiDiffEditor");
+  await expect(multiDiffEditor.getByText("ALPHA NEW", { exact: true })).toBeVisible();
+  await expect(multiDiffEditor.getByText("BRAVO NEW", { exact: true })).toBeVisible();
+  await expect(node).toHaveAttribute("data-selected");
+});

@@ -81,9 +81,10 @@ export function ChangeNodeRow({ change, index, nodeData, changeIdRef, compact, s
       return;
     }
 
+    const openAllChanges = e.altKey && !isElided;
     const outcome = computeSelection(currentChanges.value, index, selectionAnchorId.value, selectedNodes.value, {
-      shiftKey: e.shiftKey,
-      toggleKey: e.ctrlKey || e.metaKey,
+      shiftKey: e.shiftKey && !openAllChanges,
+      toggleKey: (e.ctrlKey || e.metaKey) && !openAllChanges,
     });
     if (outcome.kind === "warning") {
       postMessage({ command: "showWarning", message: outcome.message });
@@ -95,6 +96,9 @@ export function ChangeNodeRow({ change, index, nodeData, changeIdRef, compact, s
       command: "selectChange",
       selectedNodes: Array.from(outcome.selection),
     });
+    if (openAllChanges) {
+      postMessage({ command: "openAllChanges", changeId: change.id.changeId });
+    }
   };
 
   const toggleFilesChangeId =

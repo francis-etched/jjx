@@ -152,3 +152,26 @@ test("abandon multiple selected changes via context menu", async ({ graphFrame, 
     expect(getParents(logEntries, "@")).toEqual(["A"]);
   }).toPass();
 });
+
+test("abandon remains reachable in a short graph pane", async ({ graphFrame, testRepo, workbox }) => {
+  const changeId = await testRepo.commitFile("a.txt", "content a", "A");
+  const frameElement = await graphFrame.frameElement();
+  await frameElement.evaluate((element) => {
+    (element as HTMLElement).style.height = "220px";
+  });
+  const change = graphFrame.locator(`#nodes > [data-change-id^="${changeId}/"]`);
+  await change.click({ button: "right" });
+  const menu = graphFrame.locator("#context-menu");
+  await expect(menu).toBeVisible();
+  await expect
+    .poll(() => menu.evaluate((element) => element.getBoundingClientRect().bottom <= window.innerHeight))
+    .toBe(true);
+  const abandon = menu.locator('[data-action="abandon"]');
+  await abandon.scrollIntoViewIfNeeded();
+  await expect(abandon).toBeInViewport();
+  await abandon.click();
+  const dialog = workbox.locator(".monaco-dialog-box");
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Abandon" }).click();
+  await expect(change).toHaveCount(0);
+});

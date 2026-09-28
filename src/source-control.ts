@@ -1008,7 +1008,40 @@ type WorkspaceFileStatus = Omit<FileStatus, "path"> & { path: WorkspacePath };
  * one multi-diff editor regardless of the per-file click action.
  */
 export interface JJSourceControlResourceState extends vscode.SourceControlResourceState {
-  multiDiff?: [vscode.Uri, vscode.Uri, vscode.Uri];
+  multiDiff?: MultiDiffResource;
+}
+
+export type MultiDiffResource = [vscode.Uri, vscode.Uri, vscode.Uri];
+
+function getChangeDiffUris(uriFileStatus: WorkspaceFileStatus, changeId: FullChangeId | "@" | undefined) {
+  const workingCopyUri = vscode.Uri.file(uriFileStatus.path);
+  const beforeUri =
+    uriFileStatus.type === "A"
+      ? toJJUri(vscode.Uri.file(uriFileStatus.path), { deleted: true })
+      : toJJUri(vscode.Uri.file(uriFileStatus.path), {
+          diffOriginalRev: changeId ?? "@",
+          ...(uriFileStatus.renamedFrom ? { renamedFrom: uriFileStatus.renamedFrom } : {}),
+        });
+  const afterUri = changeId ? toJJUri(vscode.Uri.file(uriFileStatus.path), { rev: changeId }) : workingCopyUri;
+  const diffRightUri = uriFileStatus.type === "D" ? toJJUri(workingCopyUri, { deleted: true }) : afterUri;
+  return { workingCopyUri, beforeUri, afterUri, diffRightUri };
+}
+
+/**
+ * Builds the `vscode.changes` resources for a change's files. Omit `changeId` for the working
+ * copy so the right-hand side is the editable file on disk.
+ */
+export function buildChangeMultiDiffResources(
+  fileStatuses: FileStatus[],
+  changeId: FullChangeId | undefined,
+): MultiDiffResource[] {
+  return fileStatuses.map((fileStatus) => {
+    const { workingCopyUri, beforeUri, diffRightUri } = getChangeDiffUris(
+      { ...fileStatus, path: toWorkspaceSpelling(fileStatus.path) },
+      changeId,
+    );
+    return [workingCopyUri, beforeUri, diffRightUri];
+  });
 }
 
 function buildResourceStates(
@@ -1022,7 +1055,6 @@ function buildResourceStates(
   },
 ): JJSourceControlResourceState[] {
   const { changeId, toRev, fileClickAction, conflictedFiles, workingCopyConflictedFiles } = options;
-  const diffOriginalRev = changeId ?? "@";
 
   return fileStatuses.map((fileStatus) => {
     const isConflicted = conflictedFiles?.has(normalizePath(fileStatus.path)) ?? false;
@@ -1032,16 +1064,7 @@ function buildResourceStates(
     // VS Code derives the path shown after the file name from the resource URI, so URIs must
     // use the workspace folder's path spelling.
     const uriFileStatus: WorkspaceFileStatus = { ...fileStatus, path: toWorkspaceSpelling(fileStatus.path) };
-    const workingCopyUri = vscode.Uri.file(uriFileStatus.path);
-    const beforeUri =
-      uriFileStatus.type === "A"
-        ? toJJUri(vscode.Uri.file(uriFileStatus.path), { deleted: true })
-        : toJJUri(vscode.Uri.file(uriFileStatus.path), {
-            diffOriginalRev,
-            ...(uriFileStatus.renamedFrom ? { renamedFrom: uriFileStatus.renamedFrom } : {}),
-          });
-    const afterUri = changeId ? toJJUri(vscode.Uri.file(uriFileStatus.path), { rev: changeId }) : workingCopyUri;
-    const diffRightUri = fileStatus.type === "D" ? toJJUri(workingCopyUri, { deleted: true }) : afterUri;
+    const { workingCopyUri, beforeUri, afterUri, diffRightUri } = getChangeDiffUris(uriFileStatus, changeId);
     return {
       resourceUri: afterUri,
       // Encodes the file status so menu `when` clauses in package.json can target e.g.

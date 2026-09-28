@@ -174,6 +174,7 @@ export type WebviewToExtensionMessage =
       status: FileStatusType;
       renamedFrom?: string;
     }
+  | { command: "openAllChanges"; changeId: FullChangeId }
   | { command: "openFileAtRevision"; changeId: FullChangeId; path: string }
   | { command: "openFileInWorkingCopy"; path: string }
   | { command: "copyPath"; path: string }

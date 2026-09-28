@@ -33,6 +33,7 @@ import { DEFAULT_LOG_LIMIT } from "./constants";
 import { SplitWebview } from "./split-webview";
 import { toJJUri } from "./uri";
 import { joinRepositoryPath, repositoryRelativePath, toWorkspaceUri } from "./workspace-paths";
+import { buildChangeMultiDiffResources } from "./source-control";
 
 const rootChangeId = "z".repeat(32);
 
@@ -733,6 +734,27 @@ export class JJGraphWebview implements vscode.WebviewViewProvider {
             await vscode.commands.executeCommand("vscode.diff", beforeUri, afterUri, title);
           } catch (error: unknown) {
             showErrorMessage("Failed to open diff", error);
+          }
+          break;
+        }
+        case "openAllChanges": {
+          try {
+            const showResult = await repo.show(message.changeId);
+            const isWorkingCopy = this.findRegularChange(message.changeId)?.currentWorkingCopy ?? false;
+            const resources = buildChangeMultiDiffResources(
+              showResult.fileStatuses,
+              isWorkingCopy ? undefined : message.changeId,
+            );
+            if (resources.length === 0) {
+              vscode.window.showInformationMessage("There are no changes to show.");
+              break;
+            }
+            const shortId = formatChangeIdShort(showResult.change.changeId);
+            const firstLine = showResult.change.description.split("\n", 1)[0].trim();
+            const title = firstLine ? `${shortId} • ${firstLine}` : shortId;
+            await vscode.commands.executeCommand("vscode.changes", title, resources);
+          } catch (error: unknown) {
+            showErrorMessage("Failed to open changes", error);
           }
           break;
         }

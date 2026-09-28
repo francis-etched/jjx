@@ -35,6 +35,7 @@ system.
 - Select a change to see its affected files and diffs
 - Select multiple changes with shift-click (contiguous range from the last clicked change) or ctrl-click (individual
   changes, cmd-click on macOS)
+- Alt-click (option-click on macOS) a change to open all its files in a multi-diff editor
 - Compare two selected changes with a diff or interdiff
 - Create merge changes by selecting multiple changes and then pressing the "+" button
 - Drag & drop changes onto other changes
