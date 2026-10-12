@@ -915,6 +915,13 @@
           "scope": "resource",
           "minimum": 0
         },
+        "jjx.multiDiffMaxDiffSizeKB": {
+          "type": "number",
+          "default": 500,
+          "description": "Files whose raw diff is larger than this many kilobytes are left out when opening all changes in a multi-diff editor, since VS Code holds back the highlighting of every file while it diffs a large one. Set to 0 to include all files.",
+          "scope": "resource",
+          "minimum": 0
+        },
         "jjx.fileClickAction": {
           "type": "string",
           "default": "diff",

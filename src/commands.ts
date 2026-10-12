@@ -29,7 +29,8 @@ import {
   shouldOpenWorkingCopyRightSide,
 } from "./utils";
 import { getMergeEditorConfigs } from "./jj-editor";
-import type { JJSourceControlResourceState } from "./source-control";
+import { openMultiDiff, type JJSourceControlResourceState } from "./source-control";
+import { OPEN_LARGE_DIFF_COMMAND, openLargeDiff } from "./large-diff-placeholder";
 import { handleJJCommand } from "./process";
 
 function registerCommand<T extends unknown[]>(
@@ -856,21 +857,20 @@ export function registerInitCommands(state: ExtensionState): void {
     { errorPrefix: "Failed to switch to change" },
   );
 
+  registerCommand(context, OPEN_LARGE_DIFF_COMMAND, openLargeDiff, { errorPrefix: "Failed to open diff" });
+
   registerCommand(
     context,
     "jj.openAllChanges",
     async (resourceGroup: vscode.SourceControlResourceGroup) => {
+      const repository = getRequiredRepoFromGroup(state, resourceGroup);
       const resources = resourceGroup.resourceStates
         .map((resourceState) => (resourceState as JJSourceControlResourceState).multiDiff)
         .filter((multiDiff) => multiDiff !== undefined);
-      if (resources.length === 0) {
-        vscode.window.showInformationMessage("There are no changes to show.");
-        return;
-      }
       // The group label can contain a full multi-line change description; keep only the first
       // line so the editor tab shows just the commit header.
       const title = resourceGroup.label.split("\n", 1)[0].trim();
-      await vscode.commands.executeCommand("vscode.changes", title, resources);
+      await openMultiDiff(repository, title, resources, state.workspaceSCM.getResourceGroupDiffArgs(resourceGroup));
     },
     { errorPrefix: "Failed to open changes" },
   );

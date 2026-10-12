@@ -13,10 +13,12 @@ import {
   formatWorkingCopyTitle,
   isDescendant,
   normalizePath,
+  toForwardSlashes,
 } from "./utils";
-import { asRealPath, resolveRepositoryPath, toWorkspaceSpelling } from "./workspace-paths";
+import { asRealPath, repositoryRelativePath, resolveRepositoryPath, toWorkspaceSpelling } from "./workspace-paths";
 import { JJFileSystemProvider } from "./file-system-provider";
-import { getConfigArgs, getJJPath } from "./config";
+import { toLargeDiffPlaceholder } from "./large-diff-placeholder";
+import { getConfigArgs, getJJPath, getMultiDiffMaxDiffSizeKB } from "./config";
 import { collectProcessOutput, spawnJJ, CancelledError } from "./process";
 import { extensionDir } from "./config";
 import { JJRepository } from "./repository";
@@ -351,6 +353,29 @@ export class WorkspaceSourceControlManager {
 
   getRepositoryFromResourceGroup(resourceGroup: vscode.SourceControlResourceGroup) {
     return this.getRepositorySourceControlManagerFromResourceGroup(resourceGroup)?.repository;
+  }
+
+  /**
+   * Returns the `jj diff`/`jj interdiff` arguments whose output lists the files of
+   * `resourceGroup`, or undefined for groups without a diff (e.g. untracked files).
+   */
+  getResourceGroupDiffArgs(resourceGroup: vscode.SourceControlResourceGroup): string[] | undefined {
+    const repo = this.getRepositorySourceControlManagerFromResourceGroup(resourceGroup);
+    if (!repo) {
+      return undefined;
+    }
+    if (repo.diffResourceGroup === resourceGroup) {
+      return repo.diffSelection
+        ? [repo.diffMode, "--from", repo.diffSelection.from.changeId, "--to", repo.diffSelection.to.changeId]
+        : undefined;
+    }
+    if (repo.selectedCommitResourceGroup === resourceGroup) {
+      return repo.selectedCommitChangeId ? ["diff", "-r", repo.selectedCommitChangeId] : undefined;
+    }
+    if (repo.workingCopyResourceGroup === resourceGroup || repo.parentResourceGroups.includes(resourceGroup)) {
+      return ["diff", "-r", resourceGroup.id];
+    }
+    return undefined;
   }
 
   getSelectedCommitChangeId(resourceGroup: vscode.SourceControlResourceGroup): FullChangeId | undefined {
@@ -1042,6 +1067,34 @@ export function buildChangeMultiDiffResources(
     );
     return [workingCopyUri, beforeUri, diffRightUri];
   });
+}
+
+/**
+ * Opens `resources` in one multi-diff editor. VS Code computes all of the editor's diffs on one
+ * worker, so a single huge diff (e.g. a lockfile with very long lines) holds back the highlighting
+ * of every other file; files whose raw diff in `jj <diffArgs>` is larger than
+ * `jjx.multiDiffMaxDiffSizeKB` are therefore shown as placeholders linking to their own diff.
+ */
+export async function openMultiDiff(
+  repository: JJRepository,
+  title: string,
+  resources: MultiDiffResource[],
+  diffArgs: string[] | undefined,
+): Promise<void> {
+  if (resources.length === 0) {
+    vscode.window.showInformationMessage("There are no changes to show.");
+    return;
+  }
+  const maxDiffBytes = getMultiDiffMaxDiffSizeKB(repository.repositoryRoot) * 1024;
+  const lineCounts = maxDiffBytes > 0 && diffArgs ? await repository.diffLineCounts(diffArgs) : undefined;
+  const shown = resources.map((resource) => {
+    const relativePath = toForwardSlashes(
+      repositoryRelativePath(repository.repositoryRoot, resolveRepositoryPath(resource[0].fsPath)),
+    );
+    const bytes = lineCounts?.get(relativePath)?.bytes;
+    return bytes !== undefined && bytes > maxDiffBytes ? toLargeDiffPlaceholder(resource, title, bytes) : resource;
+  });
+  await vscode.commands.executeCommand("vscode.changes", title, shown);
 }
 
 function buildResourceStates(

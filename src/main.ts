@@ -13,6 +13,7 @@ import { registerAnnotations } from "./annotations";
 import { createPolling, initInfrastructure } from "./polling";
 import { registerColocatedCheck } from "./colocated-check";
 import { isComparisonDiffUri, isDeletedDiffUri } from "./uri";
+import { LargeDiffLinkProvider } from "./large-diff-placeholder";
 import { getActiveTextEditorDiff } from "./vscode-utils";
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -44,6 +45,10 @@ export async function activate(context: vscode.ExtensionContext) {
   } catch (error) {
     logger.error(`Failed to initialize JJEditor: ${error instanceof Error ? error.message : String(error)}`);
   }
+
+  context.subscriptions.push(
+    vscode.languages.registerDocumentLinkProvider({ scheme: "jj" }, new LargeDiffLinkProvider()),
+  );
 
   const decorationProvider = new JJDecorationProvider((decorationProvider) => {
     context.subscriptions.push(vscode.window.registerFileDecorationProvider(decorationProvider));

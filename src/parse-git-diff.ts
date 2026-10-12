@@ -5,6 +5,8 @@ export interface GitDiffLineCounts {
   added: number;
   removed: number;
   binary: boolean;
+  // Size of the file's section of the raw diff output, in UTF-8 bytes.
+  bytes: number;
 }
 
 const DIFF_HEADER_PREFIX = "diff --git ";
@@ -21,10 +23,11 @@ interface FileSection {
   added: number;
   removed: number;
   binary: boolean;
+  bytes: number;
 }
 
 /**
- * Parses `jj diff --git` output into per-file added/removed line counts, keyed by the
+ * Parses `jj diff --git` output into per-file added/removed line counts and raw diff sizes, keyed by the
  * repository-relative path (forward slashes) of the file's right side. Binary files carry
  * no counts and are flagged instead. A file whose path cannot be recovered from the header
  * lines (e.g. quoted paths with control characters) is omitted; callers then show no
@@ -48,12 +51,16 @@ export function parseGitDiffLineCounts(output: string): Map<string, GitDiffLineC
         added: section.added,
         removed: section.removed,
         binary: section.binary,
+        bytes: section.bytes,
       });
     }
     section = undefined;
   };
 
-  for (const line of output.split("\n")) {
+  const lines = output.split("\n");
+  for (const [index, line] of lines.entries()) {
+    // Every line but the last was followed by a newline in the output.
+    const lineBytes = Buffer.byteLength(line) + (index < lines.length - 1 ? 1 : 0);
     if (line.startsWith(DIFF_HEADER_PREFIX)) {
       commitSection();
       section = {
@@ -64,12 +71,14 @@ export function parseGitDiffLineCounts(output: string): Map<string, GitDiffLineC
         added: 0,
         removed: 0,
         binary: false,
+        bytes: lineBytes,
       };
       continue;
     }
     if (!section) {
       continue;
     }
+    section.bytes += lineBytes;
     if (line.startsWith(RENAME_TO_PREFIX)) {
       section.renamedTo = line.slice(RENAME_TO_PREFIX.length);
       continue;

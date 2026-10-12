@@ -29,7 +29,7 @@ import {
   CancelledError,
 } from "./process";
 import { parseFileStatuses, type ParsedFileStatuses, parseUntrackedFileStatuses } from "./parse-file-statuses";
-import { parseGitDiffLineCounts } from "./parse-git-diff";
+import { parseGitDiffLineCounts, type GitDiffLineCounts } from "./parse-git-diff";
 import { readSnapshotDir, readSnapshotFile } from "./diff-snapshot";
 import { parseInterdiffSummary } from "./parse-interdiff-summary";
 import { logger } from "./logger";
@@ -1060,6 +1060,15 @@ export class JJRepository {
   }
 
   /**
+   * Returns the per-file added/removed line counts of `jj <diffArgs> --git` (e.g.
+   * `["diff", "-r", rev]` or `["interdiff", "--from", from, "--to", to]`), keyed by the
+   * repository-relative path (forward slashes) of each file's right side.
+   */
+  async diffLineCounts(diffArgs: string[], token?: vscode.CancellationToken): Promise<Map<string, GitDiffLineCounts>> {
+    return parseGitDiffLineCounts((await this.jjCommandRead([...diffArgs, "--git"], { token })).toString());
+  }
+
+  /**
    * Fetches everything the Details view shows about the commit with the given full commit id:
    * metadata (ids, refs, author, committer, description), the overall diff statistics, and
    * the changed files with their per-file added/removed line counts. The commit id pins the
@@ -1083,9 +1092,7 @@ export class JJRepository {
     };
 
     const { fileStatuses } = this.parseFileStatuses(entry.diff_files ?? [], entry.conflicted_files ?? []);
-    const lineCounts = parseGitDiffLineCounts(
-      (await this.jjCommandRead(["diff", "-r", commitId, "--git"], { token })).toString(),
-    );
+    const lineCounts = await this.diffLineCounts(["diff", "-r", commitId], token);
 
     const changedFiles: ChangedFileDelta[] = fileStatuses.map((fileStatus) => {
       const relativePath = toForwardSlashes(repositoryRelativePath(this.repositoryRoot, fileStatus.path));

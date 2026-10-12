@@ -93,3 +93,8 @@ export function getElidedVisibleImmutableParents(repositoryRoot: string): number
   const config = vscode.workspace.getConfiguration("jjx", toWorkspaceUri(repositoryRoot));
   return config.get<number>("elidedVisibleImmutableParents") ?? 1;
 }
+
+export function getMultiDiffMaxDiffSizeKB(repositoryRoot: string): number {
+  const config = vscode.workspace.getConfiguration("jjx", toWorkspaceUri(repositoryRoot));
+  return config.get<number>("multiDiffMaxDiffSizeKB") ?? 500;
+}

@@ -13,6 +13,7 @@ import {
   workspace,
 } from "vscode";
 import { getParams } from "./uri";
+import { largeDiffPlaceholderText } from "./large-diff-placeholder";
 import type { WorkspaceSourceControlManager } from "./source-control";
 import type { JJRepository } from "./repository";
 import { eventToPromise, filterEvent } from "./vscode-utils";
@@ -147,6 +148,10 @@ export class JJFileSystemProvider implements FileSystemProvider {
 
     if ("deleted" in params) {
       return new Uint8Array(0);
+    }
+
+    if ("largeDiffOriginal" in params) {
+      return new TextEncoder().encode(largeDiffPlaceholderText(uri, params));
     }
 
     const repository = this.repositories.getRepositoryFromUri(uri);

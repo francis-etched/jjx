@@ -6,7 +6,14 @@ export type JJUriParams =
   | { diffOriginalRev: string; renamedFrom?: string }
   | { deleted: boolean }
   | { interdiffFrom: ChangeId; interdiffTo: ChangeId; side: "left" | "right"; renamedFrom?: string }
-  | { diffFrom: ChangeId; diffTo: ChangeId; side: "left" | "right"; renamedFrom?: string };
+  | { diffFrom: ChangeId; diffTo: ChangeId; side: "left" | "right"; renamedFrom?: string }
+  | {
+      largeDiffOriginal: string;
+      largeDiffModified: string;
+      largeDiffTitle: string;
+      largeDiffBytes: number;
+      side: "left" | "right";
+    };
 
 function isChangeId(v: unknown): v is ChangeId {
   if (typeof v !== "object" || v === null) {
@@ -23,6 +30,7 @@ function isChangeId(v: unknown): v is ChangeId {
 
 const isString = (v: unknown): v is string => typeof v === "string";
 const isBoolean = (v: unknown): v is boolean => typeof v === "boolean";
+const isNumber = (v: unknown): v is number => typeof v === "number";
 const isSide = (v: unknown): v is "left" | "right" => v === "left" || v === "right";
 
 interface ParamShape {
@@ -41,6 +49,15 @@ const paramShapes: ParamShape[] = [
     optional: { renamedFrom: isString },
   },
   { required: { diffFrom: isChangeId, diffTo: isChangeId, side: isSide }, optional: { renamedFrom: isString } },
+  {
+    required: {
+      largeDiffOriginal: isString,
+      largeDiffModified: isString,
+      largeDiffTitle: isString,
+      largeDiffBytes: isNumber,
+      side: isSide,
+    },
+  },
 ];
 
 function isJJUriParams(v: unknown): v is JJUriParams {

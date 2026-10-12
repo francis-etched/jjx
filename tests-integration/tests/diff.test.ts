@@ -257,3 +257,39 @@ test("Option+clicking a graph revision opens all its changes in a multi-diff edi
   await expect(multiDiffEditor.getByText("BRAVO NEW", { exact: true })).toBeVisible();
   await expect(node).toHaveAttribute("data-selected");
 });
+
+test.describe("with a low multi-diff size limit", () => {
+  test.use({ customSettings: { "jjx.multiDiffMaxDiffSizeKB": 1 } });
+
+  test("Option+clicking a graph revision shows large diffs as placeholders linking to their diff", async ({
+    graphFrame,
+    testRepo,
+    workbox,
+  }) => {
+    await testRepo.commitFile("a.txt", "ALPHA OLD", "Initial commit");
+    await testRepo.writeFile("a.txt", "ALPHA NEW");
+    await testRepo.writeFile("big.txt", `BIG ONE\n${"BIG LINE ".repeat(200)}`);
+    await testRepo.commit("Small and large files");
+
+    const node = graphFrame.locator("#nodes > div").filter({ hasText: "Small and large files" });
+    await expect(node).toBeVisible();
+    await node.click({ modifiers: ["Alt"] });
+
+    const multiDiffEditor = workbox.locator(".multiDiffEditor");
+    await expect(multiDiffEditor.getByText("ALPHA NEW", { exact: true })).toBeVisible();
+    await expect(
+      multiDiffEditor.getByText("The diff of big.txt (2 KB) is too large to show here.").first(),
+    ).toBeVisible();
+    await expect(multiDiffEditor.getByText("BIG ONE", { exact: true })).toHaveCount(0);
+
+    await multiDiffEditor
+      .getByText("Open Diff in Its Own Editor", { exact: true })
+      .first()
+      .click({ modifiers: ["ControlOrMeta"] });
+
+    await expect(workbox.getByRole("tab", { name: /^big\.txt \(/ })).toBeVisible();
+    await expect(
+      workbox.locator(".editor-instance .monaco-diff-editor").getByText("BIG ONE", { exact: true }).first(),
+    ).toBeVisible();
+  });
+});
