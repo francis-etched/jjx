@@ -43,7 +43,11 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(jjSplitTool);
     logger.info("JJEditor IPC server initialized");
   } catch (error) {
-    logger.error(`Failed to initialize JJEditor: ${error instanceof Error ? error.message : String(error)}`);
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`Failed to initialize JJEditor: ${message}`);
+    void vscode.window.showErrorMessage(
+      `Jujutsu X could not start its IPC server, so diffs and jj editors will not work: ${message}`,
+    );
   }
 
   context.subscriptions.push(

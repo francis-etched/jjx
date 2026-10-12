@@ -50,14 +50,14 @@ export async function createIPCServer(context?: string): Promise<IPCServer> {
     }
   }
 
+  // Resolve only once the socket is listening: listen() reports failures (e.g. a socket directory
+  // that does not exist) asynchronously through the "error" event.
   return new Promise((c, e) => {
-    try {
-      server.on("error", (err) => e(err));
-      server.listen(ipcHandlePath);
+    server.once("error", e);
+    server.listen(ipcHandlePath, () => {
+      server.off("error", e);
       c(new IPCServer(server, ipcHandlePath));
-    } catch (err) {
-      e(err);
-    }
+    });
   });
 }
 
