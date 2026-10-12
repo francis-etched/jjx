@@ -17,7 +17,7 @@ Always run `pnpm run format` and `pnpm run check` after adding or changing anyth
 ## Testing
 
 - Unit tests in `src/unit-test`: `pnpm run unit-test`
-- Integration tests in `tests-integration`: `pnpm run playwright-test`
+- Integration tests in `tests-integration`: `pnpm run playwright-test` (headless, requires Docker)
 - Run all tests: `pnpm run test`
 
 ### Integration Tests
@@ -25,22 +25,22 @@ Always run `pnpm run format` and `pnpm run check` after adding or changing anyth
 Run tests in a single file:
 
 ```shell
-pnpm exec playwright test --config=tests-integration/playwright.config.ts tests-integration/tests/merge-conflict.test.ts
+pnpm run playwright-test tests-integration/tests/merge-conflict.test.ts
 ```
 
 Do not add custom timeouts to Playwright expectations. The Playwright config already sets `expect.timeout`.
 
 #### Headless runs
 
-VS Code has no headless mode on macOS/Windows, but on Linux the harness auto-starts per-worker Xvfb displays. To run the
-suite headlessly on a non-Linux host (requires Docker):
+Always run integration tests headlessly with `pnpm run playwright-test [playwright args...]`. Do not run
+`pnpm exec playwright test` or `pnpm run playwright-test:headed` directly: on macOS/Windows they open real VS Code
+windows that steal focus from the user's desktop.
 
-```shell
-pnpm run playwright-test:headless [playwright args...]
-```
+VS Code has no headless mode on macOS/Windows, but on Linux the harness auto-starts per-worker Xvfb displays.
+`pnpm run playwright-test` builds `tests-integration/headless/Dockerfile` and runs the tests in a Linux container
+against a bind mount of the repository; reports land in the working tree as usual.
 
-This builds `tests-integration/headless/Dockerfile` and runs the tests in the container against a bind mount of the
-repository; reports land in the working tree as usual.
+To watch the tests run in visible VS Code windows, use `pnpm run playwright-test:headed [playwright args...]`.
 
 ### Debugging CI Failures
 
