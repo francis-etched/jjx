@@ -44,7 +44,14 @@ import {
 } from "../signals";
 import { computeSelection } from "../selection";
 import { SWIMLANE_WIDTH, CHANGE_ID_RIGHT_PADDING, rootChangeId } from "../types";
-import { getUniqueId, type LaneNode, type ChangeNode, type RegularChangeNode } from "../../../graph-protocol";
+import {
+  getUniqueId,
+  type ChangedFile,
+  type LaneNode,
+  type ChangeNode,
+  type RegularChangeNode,
+} from "../../../graph-protocol";
+import { buildFileTree, type FileTreeNode } from "../file-tree";
 import { abbreviateName, cx, escapeInvisibleChars } from "../utils";
 
 function shouldShowTooltip(change: ChangeNode): change is RegularChangeNode {
@@ -594,81 +601,105 @@ const MemoizedChangeNodeTextContent = memo(function ChangeNodeTextContent({
 const ChangedFileList = memo(function ChangedFileList({ change }: { change: RegularChangeNode }) {
   return (
     <div class={styles.changedFiles}>
-      {change.changedFiles!.map((f) => (
-        <div
-          key={f.path}
-          title="Open diff"
-          class={styles.changedFile}
-          data-role="changed-file"
-          data-path={f.path}
-          data-status={f.type.toLowerCase()}
-          data-conflict={f.conflict ? "" : undefined}
-          draggable
-          onClick={(e) => {
-            e.stopPropagation();
-            if (isDragging.value || justFinishedDrag.value) {
-              return;
-            }
-            postMessage({
-              command: "openFileDiff",
-              changeId: change.id.changeId,
-              path: f.path,
-              status: f.type,
-              ...(f.renamedFrom ? { renamedFrom: f.renamedFrom } : {}),
-            });
-          }}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            closeAllMenus();
-            fileContextMenu.value = {
-              change,
-              file: f,
-              clientX: e.clientX,
-              clientY: e.clientY,
-            };
-          }}
-          onDragStart={(e) => {
-            e.stopPropagation();
-            dragFile.value = {
-              changeId: change.id.changeId,
-              path: f.path,
-              ...(f.renamedFrom ? { renamedFrom: f.renamedFrom } : {}),
-            };
-            isDragging.value = true;
-            clearAllTooltipTimers();
-            tooltip.value = null;
-            e.dataTransfer!.setData("text/plain", f.path);
-            e.dataTransfer!.effectAllowed = "move";
-
-            const ghost = document.createElement("div");
-            ghost.className = dragGhostStyles.dragGhost;
-            const status = document.createElement("span");
-            status.className = styles.changedFileStatus;
-            status.textContent = f.type;
-            ghost.appendChild(status);
-            const filePath = document.createElement("span");
-            filePath.className = styles.changedFilePath;
-            filePath.textContent = f.path;
-            ghost.appendChild(filePath);
-            document.body.appendChild(ghost);
-            e.dataTransfer!.setDragImage(ghost, -15, 0);
-            setTimeout(() => ghost.remove(), 0);
-          }}
-          onDragEnd={(e) => {
-            e.stopPropagation();
-            isDragging.value = false;
-            dragFile.value = null;
-            dropTargetId.value = null;
-          }}
-        >
-          <span class={styles.changedFileStatus}>
-            {f.type}
-            {f.conflict ? "!" : ""}
-          </span>
-          <span class={styles.changedFilePath}>{f.path}</span>
-        </div>
-      ))}
+      <FileTreeNodes change={change} nodes={buildFileTree(change.changedFiles!)} />
     </div>
   );
 });
+
+function FileTreeNodes({ change, nodes }: { change: RegularChangeNode; nodes: FileTreeNode[] }) {
+  return (
+    <>
+      {nodes.map((node) =>
+        node.kind === "folder" ? (
+          <div key={`folder:${node.path}`}>
+            <div class={styles.changedFolder} data-role="changed-folder" data-path={node.path} title={node.path}>
+              <bdi dir="ltr">{node.name}/</bdi>
+            </div>
+            <div class={styles.changedFolderChildren}>
+              <FileTreeNodes change={change} nodes={node.children} />
+            </div>
+          </div>
+        ) : (
+          <ChangedFileRow key={node.file.path} change={change} f={node.file} name={node.name} />
+        ),
+      )}
+    </>
+  );
+}
+
+function ChangedFileRow({ change, f, name }: { change: RegularChangeNode; f: ChangedFile; name: string }) {
+  return (
+    <div
+      title="Open diff"
+      class={styles.changedFile}
+      data-role="changed-file"
+      data-path={f.path}
+      data-status={f.type.toLowerCase()}
+      data-conflict={f.conflict ? "" : undefined}
+      draggable
+      onClick={(e) => {
+        e.stopPropagation();
+        if (isDragging.value || justFinishedDrag.value) {
+          return;
+        }
+        postMessage({
+          command: "openFileDiff",
+          changeId: change.id.changeId,
+          path: f.path,
+          status: f.type,
+          ...(f.renamedFrom ? { renamedFrom: f.renamedFrom } : {}),
+        });
+      }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeAllMenus();
+        fileContextMenu.value = {
+          change,
+          file: f,
+          clientX: e.clientX,
+          clientY: e.clientY,
+        };
+      }}
+      onDragStart={(e) => {
+        e.stopPropagation();
+        dragFile.value = {
+          changeId: change.id.changeId,
+          path: f.path,
+          ...(f.renamedFrom ? { renamedFrom: f.renamedFrom } : {}),
+        };
+        isDragging.value = true;
+        clearAllTooltipTimers();
+        tooltip.value = null;
+        e.dataTransfer!.setData("text/plain", f.path);
+        e.dataTransfer!.effectAllowed = "move";
+
+        const ghost = document.createElement("div");
+        ghost.className = dragGhostStyles.dragGhost;
+        const status = document.createElement("span");
+        status.className = styles.changedFileStatus;
+        status.textContent = f.type;
+        ghost.appendChild(status);
+        const filePath = document.createElement("span");
+        filePath.className = styles.changedFilePath;
+        filePath.textContent = f.path;
+        ghost.appendChild(filePath);
+        document.body.appendChild(ghost);
+        e.dataTransfer!.setDragImage(ghost, -15, 0);
+        setTimeout(() => ghost.remove(), 0);
+      }}
+      onDragEnd={(e) => {
+        e.stopPropagation();
+        isDragging.value = false;
+        dragFile.value = null;
+        dropTargetId.value = null;
+      }}
+    >
+      <span class={styles.changedFileStatus}>
+        {f.type}
+        {f.conflict ? "!" : ""}
+      </span>
+      <span class={styles.changedFilePath}>{name}</span>
+    </div>
+  );
+}

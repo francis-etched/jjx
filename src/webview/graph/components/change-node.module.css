@@ -171,8 +171,24 @@
   align-items: baseline;
   cursor: pointer;
   padding: 0px 4px;
+  box-sizing: border-box;
   width: fit-content;
   max-width: 100%;
+}
+
+.changedFolder {
+  padding: 0px 4px;
+  opacity: 0.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
+  cursor: default;
+}
+
+.changedFolderChildren {
+  padding-left: 12px;
 }
 
 .changedFile:hover {

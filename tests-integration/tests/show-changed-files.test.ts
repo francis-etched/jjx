@@ -208,4 +208,33 @@ test.describe("with showChangedFiles enabled", () => {
     await changeId.click();
     await expect(aFile).toHaveCount(0);
   });
+
+  test("nested files render as a tree with merged folder chains", async ({ graphFrame, testRepo }) => {
+    await testRepo.writeFile("host/system_test/BUILD", "build");
+    await testRepo.writeFile("host/system_test/tests/rack/L11/rack.py", "rack");
+    await testRepo.writeFile("host/system_test/tests/rack/L11/rack_test.py", "rack test");
+    await testRepo.commit("nested files");
+
+    const nodes = graphFrame.locator("#nodes > div");
+    await expect(nodes).toHaveCount(3);
+    await nodes.nth(1).locator('[data-role="change-id"]').click();
+
+    await expect(nodes.nth(1).locator('[data-role="changed-folder"]')).toHaveText([
+      "host/system_test/",
+      "tests/rack/L11/",
+    ]);
+    await expect(nodes.nth(1).locator('[data-role="changed-file"]')).toHaveText([
+      "Arack.py",
+      "Arack_test.py",
+      "ABUILD",
+    ]);
+
+    const outerFolder = graphFrame.locator('[data-role="changed-folder"][data-path="host/system_test"]');
+    const innerFile = graphFrame.locator(
+      '[data-role="changed-file"][data-path="host/system_test/tests/rack/L11/rack.py"]',
+    );
+    const outerX = (await outerFolder.boundingBox())!.x;
+    const innerX = (await innerFile.boundingBox())!.x;
+    expect(innerX).toBeGreaterThan(outerX);
+  });
 });
