@@ -220,8 +220,8 @@ test.describe("with showChangedFiles enabled", () => {
     await nodes.nth(1).locator('[data-role="change-id"]').click();
 
     await expect(nodes.nth(1).locator('[data-role="changed-folder"]')).toHaveText([
-      "host/system_test/",
-      "tests/rack/L11/",
+      "host/system_test",
+      "tests/rack/L11",
     ]);
     await expect(nodes.nth(1).locator('[data-role="changed-file"]')).toHaveText([
       "Arack.py",

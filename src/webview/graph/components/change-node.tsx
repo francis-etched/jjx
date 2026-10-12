@@ -613,7 +613,7 @@ function FileTreeNodes({ change, nodes }: { change: RegularChangeNode; nodes: Fi
         node.kind === "folder" ? (
           <div key={`folder:${node.path}`}>
             <div class={styles.changedFolder} data-role="changed-folder" data-path={node.path} title={node.path}>
-              <bdi dir="ltr">{node.name}/</bdi>
+              <FolderLabel name={node.name} />
             </div>
             <div class={styles.changedFolderChildren}>
               <FileTreeNodes change={change} nodes={node.children} />
@@ -623,6 +623,19 @@ function FileTreeNodes({ change, nodes }: { change: RegularChangeNode; nodes: Fi
           <ChangedFileRow key={node.file.path} change={change} f={node.file} name={node.name} />
         ),
       )}
+    </>
+  );
+}
+
+function FolderLabel({ name }: { name: string }) {
+  const slash = name.lastIndexOf("/");
+  if (slash === -1) {
+    return <span class={styles.changedFolderTail}>{name}</span>;
+  }
+  return (
+    <>
+      <span class={styles.changedFolderHead}>{name.slice(0, slash)}</span>
+      <span class={styles.changedFolderTail}>{name.slice(slash)}</span>
     </>
   );
 }
