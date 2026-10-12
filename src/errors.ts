@@ -66,6 +66,15 @@ export function extractJJWarning(stderr: string): string | undefined {
 }
 
 /**
+ * jj reports a diff tool that exits unsuccessfully only with a warning and still exits 0. Returns
+ * jj's stderr (which includes the tool's own error output) when it contains that warning, or
+ * undefined otherwise.
+ */
+export function extractDiffToolFailure(stderr: string): string | undefined {
+  return stderr.includes("Warning: Tool exited with") ? stderr.trim() : undefined;
+}
+
+/**
  * Detects common error messages from jj and converts them to custom error instances to make them easier to selectively
  * handle.
  */

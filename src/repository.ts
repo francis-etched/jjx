@@ -18,7 +18,7 @@ import {
 } from "./template-builder";
 import spawn from "cross-spawn";
 import type { ChildProcess } from "child_process";
-import { ImmutableError, convertJJErrors } from "./errors";
+import { ImmutableError, convertJJErrors, extractDiffToolFailure } from "./errors";
 import {
   spawnJJ,
   handleJJCommand,
@@ -2284,9 +2284,20 @@ export class JJRepository {
       let data: T;
       try {
         // jj only exits after the diff tool does, so a settled process before the handshake
-        // means jj failed early (e.g. divergent operations, rejecting outputPromise) or finished
+        // means jj failed early (e.g. divergent operations, rejecting outputPromise), the tool
+        // failed before reaching the extension (which jj only warns about), or jj finished
         // without invoking the tool (empty diff) — synthesize empty snapshot dirs for the latter.
-        const dirs = await Promise.race([dirsPromise, outputPromise.then(() => ({ leftDir: "", rightDir: "" }))]);
+        const dirs = await Promise.race([
+          dirsPromise,
+          outputPromise.then(({ stderr }) => {
+            const failure = extractDiffToolFailure(stderr.toString());
+            if (failure) {
+              logger.error(`Diff tool failed: ${failure}`);
+              throw new Error(`Diff tool failed: ${failure}`);
+            }
+            return { leftDir: "", rightDir: "" };
+          }),
+        ]);
         data = await collect(dirs);
       } catch (err) {
         completeDiffToolRequest(requestId, false);

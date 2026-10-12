@@ -1,7 +1,13 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { convertJJErrors, DivergentOperationsError, StaleWorkingCopyError, extractJJWarning } from "../errors";
+import {
+  convertJJErrors,
+  DivergentOperationsError,
+  StaleWorkingCopyError,
+  extractDiffToolFailure,
+  extractJJWarning,
+} from "../errors";
 
 function processError(stderr: string): Error & { stderr: string } {
   const err = new Error(`Command failed with exit code 1.\nstderr: ${stderr}`) as Error & { stderr: string };
@@ -98,5 +104,26 @@ describe("extractJJWarning Test Suite", () => {
     assert.ok(result.includes('"bm"@git'));
     assert.ok(result.includes('"tg"@git'));
     assert.ok(!result.includes("deprecated thing"));
+  });
+});
+
+describe("extractDiffToolFailure Test Suite", () => {
+  it("returns undefined when the tool did not fail", () => {
+    assert.equal(extractDiffToolFailure(""), undefined);
+    assert.equal(extractDiffToolFailure("Warning: Failed to export some bookmarks:\n  bm@git"), undefined);
+  });
+
+  it("returns stderr, including the tool's own error, when jj reports the tool exited unsuccessfully", () => {
+    const stderr = [
+      "Error: connect ENOENT /run/user/501/vscode-jj-a3c9df9eba.sock",
+      "    at PipeConnectWrap.afterConnect [as oncomplete] (node:net:2021:16)",
+      "Warning: Tool exited with exit status: 1 (run with --debug to see the exact invocation).",
+      "",
+    ].join("\n");
+    const failure = extractDiffToolFailure(stderr);
+    assert.ok(failure?.includes("connect ENOENT /run/user/501/vscode-jj-a3c9df9eba.sock"));
+    assert.ok(
+      failure?.endsWith("Warning: Tool exited with exit status: 1 (run with --debug to see the exact invocation)."),
+    );
   });
 });
